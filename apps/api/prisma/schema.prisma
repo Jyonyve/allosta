@@ -1,0 +1,359 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ======================================================
+// Enums
+// ======================================================
+
+enum UserRole {
+  CUSTOMER
+  ADVISOR
+  OPERATOR
+}
+
+enum ConsultationStatus {
+  RESERVED
+  DOCUMENTING
+  COMPLETED
+  NO_SHOW
+  CANCELLED
+}
+
+enum ConsultationRecordStatus {
+  DRAFT
+  FINAL
+}
+
+enum DelegationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REVOKED
+  EXPIRED
+}
+
+enum ConsentMethod {
+  SELF_SERVICE
+  EXTERNAL_VERIFIED
+}
+
+// ======================================================
+// User / Examinee
+// ======================================================
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  role         UserRole @default(CUSTOMER)
+
+  examinee       Examinee?
+  advisorProfile AdvisorProfile?
+
+  requestedConsultations Consultation[] @relation("ConsultationRequester")
+  cancelledConsultations Consultation[] @relation("ConsultationCancelledBy")
+
+  delegationsReceived  ConsultationDelegation[] @relation("DelegationDelegate")
+  delegationsConsented ConsultationDelegation[] @relation("DelegationConsentedBy")
+  delegationsVerified  ConsultationDelegation[] @relation("DelegationVerifiedBy")
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@map("users")
+}
+
+model Examinee {
+  id     String  @id @default(uuid()) @db.Uuid
+  userId String? @unique @map("user_id") @db.Uuid
+
+  name      String
+  birthDate DateTime @map("birth_date") @db.Date
+
+  user        User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  testResults TestResult[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("examinees")
+}
+
+// ======================================================
+// Test
+// ======================================================
+
+model TestCategory {
+  id   String @id @default(uuid()) @db.Uuid
+  code String @unique
+  name String
+
+  testTypes TestType[]
+
+  @@map("test_categories")
+}
+
+model TestType {
+  id         String @id @default(uuid()) @db.Uuid
+  categoryId String @map("category_id") @db.Uuid
+
+  code        String  @unique
+  name        String
+  description String? @db.Text
+
+  category        TestCategory      @relation(fields: [categoryId], references: [id])
+  testResults     TestResult[]
+  advisorMappings AdvisorTestType[]
+
+  @@index([categoryId])
+  @@map("test_types")
+}
+
+model TestResult {
+  id         String @id @default(uuid()) @db.Uuid
+  examineeId String @map("examinee_id") @db.Uuid
+  testTypeId String @map("test_type_id") @db.Uuid
+
+  testedAt DateTime @map("tested_at") @db.Timestamptz(3)
+  summary  String?  @db.Text
+
+  examinee Examinee @relation(fields: [examineeId], references: [id])
+  testType TestType @relation(fields: [testTypeId], references: [id])
+
+  consultations Consultation[]
+  delegations   ConsultationDelegation[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([examineeId, testedAt])
+  @@index([testTypeId])
+  @@map("test_results")
+}
+
+// ======================================================
+// Advisor
+// ======================================================
+
+model AdvisorProfile {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @unique @map("user_id") @db.Uuid
+
+  introduction String? @db.Text
+  active       Boolean @default(true)
+
+  user           User                  @relation(fields: [userId], references: [id])
+  testTypes      AdvisorTestType[]
+  availabilities AdvisorAvailability[]
+  consultations  Consultation[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([active])
+  @@map("advisor_profiles")
+}
+
+model AdvisorTestType {
+  advisorId  String @map("advisor_id") @db.Uuid
+  testTypeId String @map("test_type_id") @db.Uuid
+
+  advisor  AdvisorProfile @relation(fields: [advisorId], references: [id])
+  testType TestType       @relation(fields: [testTypeId], references: [id])
+
+  @@id([advisorId, testTypeId])
+  @@index([testTypeId])
+  @@map("advisor_test_types")
+}
+
+model AdvisorAvailability {
+  id        String @id @default(uuid()) @db.Uuid
+  advisorId String @map("advisor_id") @db.Uuid
+
+  startsAt DateTime @map("starts_at") @db.Timestamptz(3)
+  endsAt   DateTime @map("ends_at") @db.Timestamptz(3)
+
+  advisor AdvisorProfile @relation(fields: [advisorId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([advisorId, startsAt])
+  @@map("advisor_availabilities")
+}
+
+// ======================================================
+// Scheduling Policy
+// ======================================================
+
+model SchedulingPolicy {
+  id String @id @default(uuid()) @db.Uuid
+
+  consultationDurationMinutes Int @map("consultation_duration_minutes")
+  slotIntervalMinutes         Int @map("slot_interval_minutes")
+
+  minimumBookingLeadTimeMinutes Int @map("minimum_booking_lead_time_minutes")
+  cancellationCutoffMinutes     Int @map("cancellation_cutoff_minutes")
+  bookingWindowDays             Int @map("booking_window_days")
+
+  active        Boolean  @default(false)
+  effectiveFrom DateTime @default(now()) @map("effective_from") @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([active])
+  @@map("scheduling_policies")
+}
+
+// ======================================================
+// Delegation
+// ======================================================
+
+model ConsultationDelegation {
+  id String @id @default(uuid()) @db.Uuid
+
+  testResultId   String @map("test_result_id") @db.Uuid
+  delegateUserId String @map("delegate_user_id") @db.Uuid
+
+  status        DelegationStatus @default(PENDING)
+  consentMethod ConsentMethod?   @map("consent_method")
+
+  consentedByUserId        String? @map("consented_by_user_id") @db.Uuid
+  verifiedByOperatorUserId String? @map("verified_by_operator_user_id") @db.Uuid
+
+  consentedAt DateTime? @map("consented_at") @db.Timestamptz(3)
+  expiresAt   DateTime? @map("expires_at") @db.Timestamptz(3)
+
+  testResult TestResult @relation(fields: [testResultId], references: [id])
+
+  delegate User @relation("DelegationDelegate", fields: [delegateUserId], references: [id])
+
+  consentedBy User? @relation("DelegationConsentedBy", fields: [consentedByUserId], references: [id])
+
+  verifiedByOperator User? @relation("DelegationVerifiedBy", fields: [verifiedByOperatorUserId], references: [id])
+
+  consultations Consultation[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([delegateUserId, status])
+  @@index([testResultId, status])
+  @@map("consultation_delegations")
+}
+
+// ======================================================
+// Consultation
+// ======================================================
+
+model Consultation {
+  id String @id @default(uuid()) @db.Uuid
+
+  requesterUserId String  @map("requester_user_id") @db.Uuid
+  testResultId    String  @map("test_result_id") @db.Uuid
+  advisorId       String  @map("advisor_id") @db.Uuid
+  delegationId    String? @map("delegation_id") @db.Uuid
+
+  status ConsultationStatus @default(RESERVED)
+
+  scheduledStartAt DateTime @map("scheduled_start_at") @db.Timestamptz(3)
+  scheduledEndAt   DateTime @map("scheduled_end_at") @db.Timestamptz(3)
+
+  cancelledAt        DateTime? @map("cancelled_at") @db.Timestamptz(3)
+  cancelledByUserId  String?   @map("cancelled_by_user_id") @db.Uuid
+  cancellationReason String?   @map("cancellation_reason") @db.Text
+
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(3)
+  noShowAt    DateTime? @map("no_show_at") @db.Timestamptz(3)
+
+  requester User @relation("ConsultationRequester", fields: [requesterUserId], references: [id])
+
+  cancelledBy User? @relation("ConsultationCancelledBy", fields: [cancelledByUserId], references: [id])
+
+  testResult TestResult @relation(fields: [testResultId], references: [id])
+
+  advisor AdvisorProfile @relation(fields: [advisorId], references: [id])
+
+  delegation ConsultationDelegation? @relation(fields: [delegationId], references: [id])
+
+  record ConsultationRecord?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([advisorId, scheduledStartAt])
+  @@index([requesterUserId, scheduledStartAt])
+  @@index([testResultId, status])
+  @@index([status, scheduledStartAt])
+  @@index([delegationId])
+  @@map("consultations")
+}
+
+// ======================================================
+// Consultation Record
+// ======================================================
+
+model ConsultationRecord {
+  id             String @id @default(uuid()) @db.Uuid
+  consultationId String @unique @map("consultation_id") @db.Uuid
+
+  status ConsultationRecordStatus @default(DRAFT)
+
+  summary      String? @db.Text
+  mainQuestion String? @map("main_question") @db.Text
+  memo         String? @db.Text
+
+  followUpRequired Boolean @default(false) @map("follow_up_required")
+  followUpNote     String? @map("follow_up_note") @db.Text
+
+  finalizedAt DateTime? @map("finalized_at") @db.Timestamptz(3)
+
+  consultation       Consultation                    @relation(fields: [consultationId], references: [id])
+  interestedProducts ConsultationInterestedProduct[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("consultation_records")
+}
+
+// ======================================================
+// Products
+// ======================================================
+
+model Product {
+  id       String  @id @default(uuid()) @db.Uuid
+  code     String  @unique
+  name     String
+  category String?
+  active   Boolean @default(true)
+
+  consultationRecords ConsultationInterestedProduct[]
+
+  @@index([active])
+  @@map("products")
+}
+
+model ConsultationInterestedProduct {
+  consultationRecordId String @map("consultation_record_id") @db.Uuid
+  productId            String @map("product_id") @db.Uuid
+
+  consultationRecord ConsultationRecord @relation(fields: [consultationRecordId], references: [id])
+  product            Product            @relation(fields: [productId], references: [id])
+
+  @@id([consultationRecordId, productId])
+  @@index([productId])
+  @@map("consultation_interested_products")
+}
