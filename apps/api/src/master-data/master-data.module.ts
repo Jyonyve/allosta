@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Injectable,
   Module,
   NotFoundException,
   Param,
@@ -10,6 +11,7 @@ import type { AuthUser } from '../common/auth.js';
 import { UserRole } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
+@Injectable()
 class MasterDataService {
   constructor(private readonly prisma: PrismaService) {}
   products() {

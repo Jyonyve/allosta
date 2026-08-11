@@ -379,6 +379,29 @@ describe('consultation PostgreSQL integration', () => {
       .expect(403);
   });
 
+  it('returns only the customer accessible test results', async () => {
+    await seedFixture();
+    const token = await login(app, 'customer1@integration.local');
+
+    const response = await request(app.getHttpServer())
+      .get('/test-results')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    expect(response.body).toHaveLength(2);
+    expect(response.body.map(({ id }: { id: string }) => id).sort()).toEqual(
+      [ids.result1, ids.result3].sort(),
+    );
+    expect(response.body[0]).toEqual(
+      expect.objectContaining({
+        testType: expect.objectContaining({
+          category: expect.objectContaining({ code: 'INTEGRATION' }),
+        }),
+        examinee: expect.objectContaining({ name: 'Customer One' }),
+      }),
+    );
+  });
+
   it('persists DRAFT then atomically finalizes the record and consultation', async () => {
     const { slot } = await seedFixture();
     const customerToken = await login(app, 'customer1@integration.local');
