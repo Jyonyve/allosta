@@ -7,7 +7,7 @@ export function rethrowConstraint(
 ): never {
   if (
     error instanceof Prisma.PrismaClientKnownRequestError &&
-    ['P2002', 'P2003', 'P2011', 'P2014'].includes(error.code)
+    ['P2002', 'P2003', 'P2011', 'P2014', 'P2034'].includes(error.code)
   ) {
     throw new ConflictException(message);
   }

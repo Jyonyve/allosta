@@ -4,6 +4,12 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "db:test:up": "docker compose -f compose.test.yml up -d --wait",
+    "db:test:down": "docker compose -f compose.test.yml down -v --remove-orphans",
+    "db:test:status": "docker compose -f compose.test.yml ps",
+    "db:test:logs": "docker compose -f compose.test.yml logs postgres-test",
+    "db:test:migrate": "pnpm --dir apps/api exec prisma migrate deploy --config prisma.test.config.ts",
+    "db:test": "pnpm db:test:up && pnpm db:test:migrate && pnpm --dir apps/api test:integration",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

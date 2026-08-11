@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Injectable,
   Module,
   Post,
   UnauthorizedException,
@@ -16,6 +17,7 @@ class LoginDto {
   @IsString() @MinLength(8) password!: string;
 }
 
+@Injectable()
 class AuthService {
   constructor(
     private readonly prisma: PrismaService,
