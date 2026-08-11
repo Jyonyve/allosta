@@ -66,6 +66,12 @@
 .button--primary:not(:disabled):hover {
   background: var(--green-dark);
 }
+.button--secondary {
+  border: 1px solid #cbd9d1;
+  background: white;
+  color: var(--green-dark);
+  box-shadow: none;
+}
 .button--wide {
   width: 100%;
   min-height: 50px;
@@ -223,6 +229,16 @@
 }
 .demo-access span {
   color: var(--muted);
+}
+.demo-buttons {
+  display: flex !important;
+  grid-auto-flow: column;
+  gap: 7px !important;
+}
+.demo-buttons .text-button {
+  padding: 6px 9px;
+  border: 1px solid #d8e2dc;
+  border-radius: 8px;
 }
 .text-button,
 .logout-button {
@@ -786,6 +802,438 @@ footer {
   font-size: 11px;
 }
 
+/* Advisor portal */
+.brand em {
+  margin-left: 2px;
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: var(--green-soft);
+  color: var(--green);
+  font:
+    700 9px/1 'DM Sans',
+    sans-serif;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+}
+.advisor-main {
+  width: min(1280px, calc(100% - 40px));
+}
+.advisor-intro {
+  align-items: center;
+}
+.advisor-metrics {
+  display: flex;
+  overflow: hidden;
+  min-width: 350px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: var(--paper);
+  box-shadow: 0 5px 20px rgba(49, 79, 68, 0.05);
+}
+.advisor-metrics div {
+  display: grid;
+  flex: 1;
+  gap: 1px;
+  padding: 13px 20px;
+  text-align: center;
+}
+.advisor-metrics div + div {
+  border-left: 1px solid var(--line);
+}
+.advisor-metrics strong {
+  color: var(--green-dark);
+  font:
+    700 20px/1.15 'Manrope',
+    sans-serif;
+}
+.advisor-metrics span {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.advisor-specialties {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: -13px 0 25px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.advisor-specialties > span {
+  margin-right: 3px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.advisor-specialties strong {
+  padding: 5px 9px;
+  border-radius: 20px;
+  background: #eaf2ed;
+  color: var(--green-dark);
+  font-size: 10px;
+}
+.advisor-card,
+.record-editor {
+  border: 1px solid rgba(216, 225, 218, 0.9);
+  border-radius: 20px;
+  background: var(--paper);
+  box-shadow: 0 8px 28px rgba(49, 79, 68, 0.055);
+}
+.advisor-schedule-layout {
+  display: grid;
+  grid-template-columns: minmax(310px, 0.7fr) minmax(560px, 1.3fr);
+  gap: 22px;
+  align-items: start;
+}
+.schedule-list {
+  position: sticky;
+  top: 99px;
+  overflow: hidden;
+  padding: 25px 0 10px;
+}
+.schedule-list > .section-heading {
+  padding: 0 24px;
+}
+.advisor-appointment-list {
+  display: grid;
+  max-height: 670px;
+  overflow-y: auto;
+  padding: 0 9px;
+}
+.advisor-appointment-list > button {
+  display: grid;
+  grid-template-columns: 88px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 15px;
+  border: 0;
+  border-radius: 13px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+}
+.advisor-appointment-list > button:hover {
+  background: #f4f7f4;
+}
+.advisor-appointment-list > button.selected {
+  background: var(--green-soft);
+}
+.appointment-date,
+.appointment-person {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.appointment-date strong {
+  color: var(--green-dark);
+  font-size: 13px;
+}
+.appointment-date small,
+.appointment-person small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.appointment-person strong {
+  font-size: 13px;
+}
+.advisor-detail-column {
+  display: grid;
+  gap: 18px;
+}
+.consultation-overview {
+  padding: 25px;
+}
+.overview-top,
+.record-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+.overview-top h2 {
+  margin: 0;
+  font-size: 25px;
+}
+.consultation-overview dl {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px 28px;
+  margin: 23px 0 0;
+}
+.consultation-overview dl div {
+  display: grid;
+  gap: 4px;
+}
+.consultation-overview dt {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.consultation-overview dd {
+  margin: 0;
+  font-size: 13px;
+}
+.health-result-note {
+  margin-top: 21px;
+  padding: 14px 16px;
+  border-left: 3px solid #9ac5b5;
+  border-radius: 0 10px 10px 0;
+  background: #f3f7f4;
+}
+.health-result-note strong {
+  color: var(--green-dark);
+  font-size: 11px;
+}
+.health-result-note p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+.record-editor {
+  padding: 25px;
+}
+.record-heading {
+  align-items: center;
+  margin-bottom: 20px;
+}
+.record-heading h3 {
+  margin: 0;
+  font-size: 19px;
+}
+.record-editor fieldset {
+  display: grid;
+  gap: 17px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.record-editor fieldset > label,
+.availability-form label {
+  display: grid;
+  gap: 7px;
+  color: #3b4c47;
+  font-size: 12px;
+  font-weight: 700;
+}
+.record-editor textarea,
+.availability-form input {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid #ced9d3;
+  border-radius: 10px;
+  background: white;
+  color: var(--ink);
+  resize: vertical;
+}
+.record-editor textarea:focus,
+.availability-form input:focus {
+  border-color: var(--green);
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(23, 107, 91, 0.08);
+}
+.record-editor fieldset:disabled textarea,
+.record-editor fieldset:disabled .product-options label {
+  background: #f5f6f4;
+  cursor: default;
+}
+.checkbox-row {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 10px !important;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--warm);
+}
+.checkbox-row input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--green);
+}
+.checkbox-row span {
+  display: grid;
+  gap: 2px;
+}
+.checkbox-row small {
+  color: var(--muted);
+  font-weight: 400;
+}
+.product-fieldset > span {
+  color: #3b4c47;
+  font-size: 12px;
+  font-weight: 700;
+}
+.product-fieldset > p {
+  margin: 3px 0 10px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.product-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.product-options label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  cursor: pointer;
+}
+.product-options label.selected {
+  border-color: #9bc4b5;
+  background: var(--green-soft);
+}
+.product-options input {
+  accent-color: var(--green);
+}
+.product-options span {
+  display: grid;
+  gap: 2px;
+}
+.product-options strong {
+  font-size: 11px;
+}
+.product-options small {
+  color: var(--muted);
+  font-size: 9px;
+}
+.record-actions,
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 21px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.record-locked {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 22px;
+  border: 1px dashed #ccd7d1;
+  border-radius: 15px;
+  color: var(--muted);
+}
+.record-locked p {
+  margin: 0;
+  font-size: 12px;
+}
+.status--draft {
+  background: #f5eedb;
+  color: #806b34;
+}
+.status--final {
+  background: #e7eff8;
+  color: #3c5f83;
+}
+.advisor-availability-layout {
+  display: grid;
+  grid-template-columns: minmax(480px, 1.25fr) minmax(330px, 0.75fr);
+  gap: 22px;
+  align-items: start;
+}
+.availability-list-card,
+.availability-form-card {
+  padding: 27px;
+}
+.availability-form-card {
+  position: sticky;
+  top: 99px;
+}
+.availability-form-card h2 {
+  margin-bottom: 8px;
+  font-size: 21px;
+}
+.availability-form-card > .muted {
+  font-size: 12px;
+  line-height: 1.5;
+}
+.availability-form {
+  display: grid;
+  gap: 16px;
+  margin-top: 23px;
+}
+.availability-form input {
+  min-height: 44px;
+}
+.time-input-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.availability-days {
+  display: grid;
+  gap: 19px;
+}
+.availability-day {
+  display: grid;
+  grid-template-columns: 145px 1fr;
+  gap: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.availability-day:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+.availability-date {
+  display: grid;
+  align-content: start;
+  gap: 3px;
+}
+.availability-date strong {
+  font-size: 13px;
+}
+.availability-date span {
+  color: var(--muted);
+  font-size: 10px;
+}
+.availability-ranges {
+  display: grid;
+  gap: 8px;
+}
+.availability-range {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 13px;
+  border-radius: 10px;
+  background: #f4f7f4;
+}
+.availability-range > span {
+  color: var(--green);
+}
+.availability-range strong {
+  font-size: 12px;
+}
+.availability-range div {
+  display: flex;
+  gap: 5px;
+}
+.availability-range button {
+  padding: 4px 6px;
+  border: 0;
+  background: transparent;
+  color: var(--green);
+  font-size: 10px;
+  font-weight: 700;
+}
+.availability-range button.danger-link {
+  color: var(--danger);
+}
+
 @media (max-width: 900px) {
   .login-page {
     grid-template-columns: 1fr;
@@ -839,6 +1287,23 @@ footer {
   footer {
     margin-bottom: 60px;
   }
+  .advisor-intro {
+    align-items: stretch;
+  }
+  .advisor-metrics {
+    min-width: 0;
+  }
+  .advisor-schedule-layout,
+  .advisor-availability-layout {
+    grid-template-columns: 1fr;
+  }
+  .schedule-list,
+  .availability-form-card {
+    position: static;
+  }
+  .advisor-appointment-list {
+    max-height: 370px;
+  }
 }
 
 @media (max-width: 600px) {
@@ -873,6 +1338,9 @@ footer {
     padding: 0 16px;
   }
   .portal-header .brand > span:last-child {
+    display: none;
+  }
+  .portal-header .brand em {
     display: none;
   }
   .avatar {
@@ -937,6 +1405,56 @@ footer {
     width: calc(100% - 28px);
     flex-direction: column;
     gap: 5px;
+  }
+  .advisor-main {
+    width: min(100% - 24px, 1280px);
+  }
+  .advisor-metrics div {
+    padding: 11px 9px;
+  }
+  .advisor-specialties > span {
+    flex-basis: 100%;
+  }
+  .advisor-appointment-list > button {
+    grid-template-columns: 76px 1fr;
+  }
+  .advisor-appointment-list > button .status {
+    grid-column: 2;
+    justify-self: start;
+  }
+  .consultation-overview,
+  .record-editor,
+  .availability-list-card,
+  .availability-form-card {
+    padding: 19px 16px;
+    border-radius: 16px;
+  }
+  .consultation-overview dl,
+  .product-options {
+    grid-template-columns: 1fr;
+  }
+  .record-actions,
+  .form-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+  .record-actions .button,
+  .form-actions .button {
+    width: 100%;
+  }
+  .availability-day {
+    grid-template-columns: 1fr;
+    gap: 9px;
+  }
+  .availability-date {
+    grid-auto-flow: column;
+    justify-content: space-between;
+  }
+  .availability-range {
+    grid-template-columns: auto 1fr;
+  }
+  .availability-range div {
+    grid-column: 2;
   }
 }
 

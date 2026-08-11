@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ApiError, api } from './api';
 import type { Consultation, Session, TestResult } from './api';
+import { AdvisorPortal } from './AdvisorPortal';
 import './App.css';
 
 const SESSION_KEY = 'alostar.customer.session';
@@ -70,8 +71,8 @@ function Login({ onLogin }: { onLogin: (session: Session) => void }) {
     setError('');
     try {
       const next = await api.login(email.trim(), password);
-      if (next.user.role !== 'CUSTOMER') {
-        throw new Error('This portal is currently available to customers only.');
+      if (next.user.role === 'OPERATOR') {
+        throw new Error('The operator workspace is not available yet.');
       }
       onLogin(next);
     } catch (nextError) {
@@ -81,8 +82,8 @@ function Login({ onLogin }: { onLogin: (session: Session) => void }) {
     }
   }
 
-  function useDemo() {
-    setEmail('customer@demo.local');
+  function fillDemo(role: 'customer' | 'advisor') {
+    setEmail(role === 'customer' ? 'customer@demo.local' : 'advisor1@demo.local');
     setPassword('DemoPass123!');
     setError('');
   }
@@ -112,7 +113,7 @@ function Login({ onLogin }: { onLogin: (session: Session) => void }) {
 
       <section className="login-panel" aria-labelledby="login-title">
         <div className="login-card">
-          <p className="eyebrow">Customer portal</p>
+          <p className="eyebrow">Consultation portal</p>
           <h2 id="login-title">Welcome back</h2>
           <p className="muted">Sign in to review your results and consultations.</p>
 
@@ -153,11 +154,16 @@ function Login({ onLogin }: { onLogin: (session: Session) => void }) {
           <div className="demo-access">
             <div>
               <strong>Trying the demo?</strong>
-              <span>Use the seeded customer account.</span>
+              <span>Choose a seeded portal account.</span>
             </div>
-            <button type="button" className="text-button" onClick={useDemo}>
-              Fill demo login
-            </button>
+            <div className="demo-buttons">
+              <button type="button" className="text-button" onClick={() => fillDemo('customer')}>
+                Customer
+              </button>
+              <button type="button" className="text-button" onClick={() => fillDemo('advisor')}>
+                Advisor
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -514,7 +520,7 @@ function ConsultationsView({
   );
 }
 
-function Portal({ session, onLogout }: { session: Session; onLogout: () => void }) {
+function CustomerPortal({ session, onLogout }: { session: Session; onLogout: () => void }) {
   const [view, setView] = useState<'book' | 'consultations'>('book');
   const [results, setResults] = useState<TestResult[]>([]);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
@@ -655,7 +661,12 @@ function App() {
     setSession(null);
   }
 
-  return session ? <Portal session={session} onLogout={logout} /> : <Login onLogin={login} />;
+  if (!session) return <Login onLogin={login} />;
+  return session.user.role === 'ADVISOR' ? (
+    <AdvisorPortal session={session} onLogout={logout} />
+  ) : (
+    <CustomerPortal session={session} onLogout={logout} />
+  );
 }
 
 export default App;

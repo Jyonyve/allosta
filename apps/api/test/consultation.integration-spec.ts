@@ -28,6 +28,7 @@ const ids = {
   consultation2: 'a0000000-0000-4000-8000-000000000002',
   delegation: 'b0000000-0000-4000-8000-000000000001',
   record: 'c0000000-0000-4000-8000-000000000001',
+  product: 'd0000000-0000-4000-8000-000000000001',
 };
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -147,6 +148,11 @@ async function seedFixture() {
         booking_window_days, active, updated_at)
      VALUES ($1, 30, 30, 60, 60, 30, true, now())`,
     [ids.policy],
+  );
+  await pool.query(
+    `INSERT INTO products (id, code, name, category, active)
+     VALUES ($1, 'INTEGRATION_PRODUCT', 'Integration product', 'Supplement', true)`,
+    [ids.product],
   );
 
   return { slot, availabilityStart, availabilityEnd };
@@ -402,6 +408,100 @@ describe('consultation PostgreSQL integration', () => {
     );
   });
 
+  it('serves the advisor profile, schedule, products, and availability CRUD', async () => {
+    const { slot, availabilityEnd } = await seedFixture();
+    await insertConsultation({
+      id: ids.consultation1,
+      requesterId: ids.customer,
+      resultId: ids.result1,
+      advisorId: ids.advisor1,
+      start: slot,
+    });
+    const token = await login(app, 'advisor1@integration.local');
+    const auth = { Authorization: `Bearer ${token}` };
+
+    const profile = await request(app.getHttpServer())
+      .get('/advisor/profile')
+      .set(auth)
+      .expect(200);
+    expect(profile.body).toEqual(
+      expect.objectContaining({
+        id: ids.advisor1,
+        active: true,
+        user: expect.objectContaining({ name: 'Advisor One' }),
+      }),
+    );
+    expect(profile.body.testTypes[0].testType.name).toBe(
+      'Integration test type',
+    );
+
+    const schedule = await request(app.getHttpServer())
+      .get('/consultations/advisor/mine')
+      .set(auth)
+      .expect(200);
+    expect(schedule.body).toHaveLength(1);
+    expect(schedule.body[0]).toEqual(
+      expect.objectContaining({
+        id: ids.consultation1,
+        requester: expect.objectContaining({ name: 'Customer One' }),
+        testResult: expect.objectContaining({
+          examinee: expect.objectContaining({ name: 'Customer One' }),
+        }),
+      }),
+    );
+
+    const products = await request(app.getHttpServer())
+      .get('/products')
+      .set(auth)
+      .expect(200);
+    expect(products.body).toEqual([
+      expect.objectContaining({ id: ids.product, active: true }),
+    ]);
+
+    await request(app.getHttpServer())
+      .post('/advisor/availability')
+      .set(auth)
+      .send({
+        startsAt: availabilityEnd.toISOString(),
+        endsAt: new Date(availabilityEnd.getTime() + 3_600_000).toISOString(),
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post('/advisor/availability')
+      .set(auth)
+      .send({
+        startsAt: new Date(availabilityEnd.getTime() - 1_800_000).toISOString(),
+        endsAt: new Date(availabilityEnd.getTime() + 1_800_000).toISOString(),
+      })
+      .expect(409);
+
+    const availability = await request(app.getHttpServer())
+      .get('/advisor/availability')
+      .set(auth)
+      .expect(200);
+    const created = availability.body.find(
+      ({ id }: { id: string }) => id !== ids.availability1,
+    );
+    expect(created).toBeTruthy();
+
+    const updatedEnd = new Date(availabilityEnd.getTime() + 5_400_000);
+    await request(app.getHttpServer())
+      .patch(`/advisor/availability/${created.id}`)
+      .set(auth)
+      .send({
+        startsAt: availabilityEnd.toISOString(),
+        endsAt: updatedEnd.toISOString(),
+      })
+      .expect(200)
+      .expect(({ body }) => expect(body.endsAt).toBe(updatedEnd.toISOString()));
+
+    await request(app.getHttpServer())
+      .delete(`/advisor/availability/${created.id}`)
+      .set(auth)
+      .expect(200);
+  });
+
   it('persists DRAFT then atomically finalizes the record and consultation', async () => {
     const { slot } = await seedFixture();
     const customerToken = await login(app, 'customer1@integration.local');
@@ -416,9 +516,10 @@ describe('consultation PostgreSQL integration', () => {
     const draft = await request(app.getHttpServer())
       .patch(`/consultations/${reservation.body.id}/record`)
       .set('Authorization', `Bearer ${advisorToken}`)
-      .send({ summary: 'Persisted draft' })
+      .send({ summary: 'Persisted draft', productIds: [ids.product] })
       .expect(200);
     expect(draft.body.status).toBe('DRAFT');
+    expect(draft.body.interestedProducts[0].product.id).toBe(ids.product);
 
     const documenting = await pool.query(
       `SELECT status FROM consultations WHERE id = $1`,

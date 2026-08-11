@@ -44,6 +44,63 @@ export type Consultation = {
   record: { id: string; status: 'DRAFT' | 'FINAL'; summary: string | null } | null;
 };
 
+export type AdvisorProfile = {
+  id: string;
+  introduction: string | null;
+  active: boolean;
+  user: { id: string; name: string; email: string };
+  testTypes: Array<{
+    testType: { id: string; code: string; name: string; description: string | null };
+  }>;
+};
+
+export type AdvisorAvailability = {
+  id: string;
+  advisorId: string;
+  startsAt: string;
+  endsAt: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Product = {
+  id: string;
+  code: string;
+  name: string;
+  category: string | null;
+  active: boolean;
+};
+
+export type ConsultationRecord = {
+  id: string;
+  status: 'DRAFT' | 'FINAL';
+  summary: string | null;
+  mainQuestion: string | null;
+  memo: string | null;
+  followUpRequired: boolean;
+  followUpNote: string | null;
+  finalizedAt: string | null;
+  interestedProducts: Array<{ productId: string; product: Product }>;
+};
+
+export type AdvisorConsultation = Omit<Consultation, 'record'> & {
+  requester: { id: string; name: string };
+  testResult: Consultation['testResult'] & {
+    testedAt: string;
+    summary: string | null;
+  };
+  record: ConsultationRecord | null;
+};
+
+export type RecordInput = {
+  summary?: string;
+  mainQuestion?: string;
+  memo?: string;
+  followUpRequired?: boolean;
+  followUpNote?: string;
+  productIds?: string[];
+};
+
 export class ApiError extends Error {
   readonly status: number;
 
@@ -111,6 +168,52 @@ export const api = {
       method: 'PATCH',
       token,
       body: { reason: 'Cancelled by customer' },
+    });
+  },
+  advisorProfile(token: string) {
+    return request<AdvisorProfile>('/advisor/profile', { token });
+  },
+  advisorAvailability(token: string) {
+    return request<AdvisorAvailability[]>('/advisor/availability', { token });
+  },
+  createAvailability(token: string, startsAt: string, endsAt: string) {
+    return request<AdvisorAvailability>('/advisor/availability', {
+      method: 'POST',
+      token,
+      body: { startsAt, endsAt },
+    });
+  },
+  updateAvailability(token: string, id: string, startsAt: string, endsAt: string) {
+    return request<AdvisorAvailability>(`/advisor/availability/${id}`, {
+      method: 'PATCH',
+      token,
+      body: { startsAt, endsAt },
+    });
+  },
+  deleteAvailability(token: string, id: string) {
+    return request<AdvisorAvailability>(`/advisor/availability/${id}`, {
+      method: 'DELETE',
+      token,
+    });
+  },
+  advisorConsultations(token: string) {
+    return request<AdvisorConsultation[]>('/consultations/advisor/mine', { token });
+  },
+  products(token: string) {
+    return request<Product[]>('/products', { token });
+  },
+  saveDraft(token: string, consultationId: string, input: RecordInput) {
+    return request<ConsultationRecord>(`/consultations/${consultationId}/record`, {
+      method: 'PATCH',
+      token,
+      body: input,
+    });
+  },
+  finalizeRecord(token: string, consultationId: string, input: RecordInput) {
+    return request<ConsultationRecord>(`/consultations/${consultationId}/record/finalize`, {
+      method: 'POST',
+      token,
+      body: input,
     });
   },
 };
