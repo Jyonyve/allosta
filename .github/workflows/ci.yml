@@ -67,5 +67,8 @@ jobs:
       - name: Build API
         run: pnpm --dir apps/api build
 
+      - name: Lint web
+        run: pnpm --dir apps/web lint
+
       - name: Build web
         run: pnpm --dir apps/web build
