@@ -1,9 +1,10 @@
-import { Controller, Module, Post } from '@nestjs/common';
+import { Controller, Injectable, Module, Post } from '@nestjs/common';
 import { Cron, ScheduleModule } from '@nestjs/schedule';
 import { Roles } from '../common/auth.js';
 import { UserRole } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
+@Injectable()
 export class NoShowService {
   constructor(private readonly prisma: PrismaService) {}
   @Cron('0 10 0 * * *', { timeZone: 'Asia/Seoul' })

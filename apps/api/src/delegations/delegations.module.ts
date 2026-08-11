@@ -16,6 +16,9 @@ import {
   CommandHandler,
   CqrsModule,
   ICommandHandler,
+  IQueryHandler,
+  QueryBus,
+  QueryHandler,
 } from '@nestjs/cqrs';
 import { IsEmail, IsOptional, IsString, IsUUID } from 'class-validator';
 import { CurrentUser, Roles } from '../common/auth.js';
@@ -48,6 +51,27 @@ class VerifyDelegation {
     public readonly operatorId: string,
     public readonly id: string,
   ) {}
+}
+class PendingExternalDelegationsQuery {}
+
+@QueryHandler(PendingExternalDelegationsQuery)
+class PendingExternalDelegationsHandler implements IQueryHandler<PendingExternalDelegationsQuery> {
+  constructor(private readonly prisma: PrismaService) {}
+  execute() {
+    return this.prisma.consultationDelegation.findMany({
+      where: { status: 'PENDING' },
+      include: {
+        delegate: { select: { id: true, name: true, email: true } },
+        testResult: {
+          include: {
+            testType: true,
+            examinee: { select: { id: true, name: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
 }
 
 @CommandHandler(RequestDelegation)
@@ -136,6 +160,7 @@ class VerifyDelegationHandler implements ICommandHandler<VerifyDelegation> {
 class DelegationsController {
   constructor(
     private readonly bus: CommandBus,
+    private readonly queries: QueryBus,
     private readonly prisma: PrismaService,
   ) {}
   @Roles(UserRole.CUSTOMER) @Post() request(
@@ -143,6 +168,9 @@ class DelegationsController {
     @Body() dto: RequestDelegationDto,
   ) {
     return this.bus.execute(new RequestDelegation(user.id, dto));
+  }
+  @Roles(UserRole.OPERATOR) @Get('pending-external') pendingExternal() {
+    return this.queries.execute(new PendingExternalDelegationsQuery());
   }
   @Roles(UserRole.CUSTOMER) @Get('pending-consent') pending(
     @CurrentUser() user: AuthUser,
@@ -186,6 +214,7 @@ class DelegationsController {
     RequestDelegationHandler,
     DecideDelegationHandler,
     VerifyDelegationHandler,
+    PendingExternalDelegationsHandler,
   ],
 })
 export class DelegationsModule {}

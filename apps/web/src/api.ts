@@ -101,6 +101,45 @@ export type RecordInput = {
   productIds?: string[];
 };
 
+export type OperatorConsultation = AdvisorConsultation & {
+  requester: { id: string; name: string; email: string };
+  advisor: { user: { name: string; email: string } };
+  delegation: {
+    id: string;
+    status: string;
+    consentMethod: 'SELF_SERVICE' | 'EXTERNAL_VERIFIED' | null;
+  } | null;
+};
+
+export type Dashboard = {
+  counts: Partial<Record<ConsultationStatus, number>>;
+  completionRate: number | null;
+  noShowRate: number | null;
+  advisorStatistics: Array<{
+    advisorId: string;
+    name: string;
+    active: boolean;
+    counts: Partial<Record<ConsultationStatus, number>>;
+    completionRate: number | null;
+    noShowRate: number | null;
+  }>;
+  interestedProducts: Array<{ product: Product; count: number }>;
+};
+
+export type PendingDelegation = {
+  id: string;
+  status: 'PENDING';
+  createdAt: string;
+  delegate: { id: string; name: string; email: string };
+  testResult: {
+    id: string;
+    testedAt: string;
+    summary: string | null;
+    examinee: { id: string; name: string };
+    testType: { id: string; code: string; name: string };
+  };
+};
+
 export class ApiError extends Error {
   readonly status: number;
 
@@ -215,5 +254,27 @@ export const api = {
       token,
       body: input,
     });
+  },
+  operatorConsultations(token: string) {
+    return request<OperatorConsultation[]>('/operator/consultations', { token });
+  },
+  operatorConsultation(token: string, id: string) {
+    return request<OperatorConsultation>(`/operator/consultations/${id}`, { token });
+  },
+  dashboard(token: string) {
+    return request<Dashboard>('/operator/dashboard', { token });
+  },
+  pendingExternalDelegations(token: string) {
+    return request<PendingDelegation[]>('/delegations/pending-external', { token });
+  },
+  verifyExternalDelegation(token: string, id: string) {
+    return request<{ id: string; status: string; consentMethod: string }>(`/delegations/${id}/external-verify`, {
+      method: 'PATCH',
+      token,
+      body: { note: 'Verified through external lawful process' },
+    });
+  },
+  runNoShowBatch(token: string) {
+    return request<{ count: number }>('/operator/batch/no-shows', { method: 'POST', token });
   },
 };

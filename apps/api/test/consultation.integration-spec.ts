@@ -12,6 +12,7 @@ const ids = {
   customer2: '40000000-0000-4000-8000-000000000002',
   advisorUser1: '40000000-0000-4000-8000-000000000003',
   advisorUser2: '40000000-0000-4000-8000-000000000004',
+  operator: '40000000-0000-4000-8000-000000000005',
   examinee1: '50000000-0000-4000-8000-000000000001',
   examinee2: '50000000-0000-4000-8000-000000000002',
   result1: '60000000-0000-4000-8000-000000000001',
@@ -26,6 +27,7 @@ const ids = {
   policy: '10000000-0000-4000-8000-000000000001',
   consultation1: 'a0000000-0000-4000-8000-000000000001',
   consultation2: 'a0000000-0000-4000-8000-000000000002',
+  consultation3: 'a0000000-0000-4000-8000-000000000003',
   delegation: 'b0000000-0000-4000-8000-000000000001',
   record: 'c0000000-0000-4000-8000-000000000001',
   product: 'd0000000-0000-4000-8000-000000000001',
@@ -72,15 +74,17 @@ async function seedFixture() {
   await pool.query(
     `INSERT INTO users (id, email, password_hash, name, role, "updatedAt")
      VALUES
-       ($1, 'customer1@integration.local', $5, 'Customer One', 'CUSTOMER', now()),
-       ($2, 'customer2@integration.local', $5, 'Customer Two', 'CUSTOMER', now()),
-       ($3, 'advisor1@integration.local', $5, 'Advisor One', 'ADVISOR', now()),
-       ($4, 'advisor2@integration.local', $5, 'Advisor Two', 'ADVISOR', now())`,
+       ($1, 'customer1@integration.local', $6, 'Customer One', 'CUSTOMER', now()),
+       ($2, 'customer2@integration.local', $6, 'Customer Two', 'CUSTOMER', now()),
+       ($3, 'advisor1@integration.local', $6, 'Advisor One', 'ADVISOR', now()),
+       ($4, 'advisor2@integration.local', $6, 'Advisor Two', 'ADVISOR', now()),
+       ($5, 'operator@integration.local', $6, 'Operator One', 'OPERATOR', now())`,
     [
       ids.customer,
       ids.customer2,
       ids.advisorUser1,
       ids.advisorUser2,
+      ids.operator,
       passwordHash,
     ],
   );
@@ -500,6 +504,117 @@ describe('consultation PostgreSQL integration', () => {
       .delete(`/advisor/availability/${created.id}`)
       .set(auth)
       .expect(200);
+  });
+
+  it('serves operator consultations, dashboard, consent verification, and no-show batch', async () => {
+    const { slot } = await seedFixture();
+    await insertConsultation({
+      id: ids.consultation1,
+      requesterId: ids.customer,
+      resultId: ids.result1,
+      advisorId: ids.advisor1,
+      start: slot,
+      status: 'CANCELLED',
+    });
+    const completedStart = new Date(slot.getTime() + 3_600_000);
+    await insertConsultation({
+      id: ids.consultation2,
+      requesterId: ids.customer2,
+      resultId: ids.result2,
+      advisorId: ids.advisor2,
+      start: completedStart,
+      status: 'CANCELLED',
+    });
+    await pool.query(
+      `UPDATE consultations SET status = 'COMPLETED', completed_at = now() WHERE id = $1`,
+      [ids.consultation2],
+    );
+    await pool.query(
+      `INSERT INTO consultation_records
+         (id, consultation_id, status, summary, finalized_at, updated_at)
+       VALUES ($1, $2, 'FINAL', 'Operator aggregate record', now(), now())`,
+      [ids.record, ids.consultation2],
+    );
+    await pool.query(
+      `INSERT INTO consultation_interested_products (consultation_record_id, product_id)
+       VALUES ($1, $2)`,
+      [ids.record, ids.product],
+    );
+    await pool.query(
+      `INSERT INTO consultation_delegations
+         (id, test_result_id, delegate_user_id, status, updated_at)
+       VALUES ($1, $2, $3, 'PENDING', now())`,
+      [ids.delegation, ids.result3, ids.customer2],
+    );
+
+    const token = await login(app, 'operator@integration.local');
+    const auth = { Authorization: `Bearer ${token}` };
+    const consultations = await request(app.getHttpServer())
+      .get('/operator/consultations')
+      .set(auth)
+      .expect(200);
+    expect(consultations.body).toHaveLength(2);
+    expect(consultations.body[0]).toHaveProperty('delegation');
+
+    await request(app.getHttpServer())
+      .get(`/operator/consultations/${ids.consultation2}`)
+      .set(auth)
+      .expect(200)
+      .expect(({ body }) => expect(body.record.status).toBe('FINAL'));
+
+    const dashboard = await request(app.getHttpServer())
+      .get('/operator/dashboard')
+      .set(auth)
+      .expect(200);
+    expect(dashboard.body.counts).toEqual(
+      expect.objectContaining({ COMPLETED: 1, CANCELLED: 1 }),
+    );
+    expect(dashboard.body.completionRate).toBe(1);
+    expect(dashboard.body.interestedProducts[0]).toEqual(
+      expect.objectContaining({ count: 1 }),
+    );
+
+    const pending = await request(app.getHttpServer())
+      .get('/delegations/pending-external')
+      .set(auth)
+      .expect(200);
+    expect(pending.body).toEqual([
+      expect.objectContaining({ id: ids.delegation, status: 'PENDING' }),
+    ]);
+    await request(app.getHttpServer())
+      .patch(`/delegations/${ids.delegation}/external-verify`)
+      .set(auth)
+      .send({ note: 'Verified through external lawful process' })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.status).toBe('APPROVED');
+        expect(body.consentMethod).toBe('EXTERNAL_VERIFIED');
+      });
+
+    const now = new Date();
+    const kst = new Date(now.getTime() + 9 * 3_600_000);
+    const previousDayStart = new Date(
+      Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate()) -
+        9 * 3_600_000 -
+        86_400_000,
+    );
+    await insertConsultation({
+      id: ids.consultation3,
+      requesterId: ids.customer,
+      resultId: ids.result3,
+      advisorId: ids.advisor1,
+      start: new Date(previousDayStart.getTime() + 3_600_000),
+    });
+    await request(app.getHttpServer())
+      .post('/operator/batch/no-shows')
+      .set(auth)
+      .expect(201)
+      .expect(({ body }) => expect(body.count).toBe(1));
+    const noShow = await pool.query(
+      `SELECT status FROM consultations WHERE id = $1`,
+      [ids.consultation3],
+    );
+    expect(noShow.rows[0].status).toBe('NO_SHOW');
   });
 
   it('persists DRAFT then atomically finalizes the record and consultation', async () => {

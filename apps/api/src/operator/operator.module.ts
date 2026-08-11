@@ -19,6 +19,7 @@ class OperatorController {
         requester: { select: { id: true, name: true, email: true } },
         advisor: { include: { user: { select: { name: true, email: true } } } },
         testResult: { include: { testType: true, examinee: true } },
+        delegation: true,
         record: {
           include: { interestedProducts: { include: { product: true } } },
         },

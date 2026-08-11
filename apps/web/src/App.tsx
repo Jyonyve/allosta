@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { ApiError, api } from './api';
 import type { Consultation, Session, TestResult } from './api';
 import { AdvisorPortal } from './AdvisorPortal';
+import { OperatorPortal } from './OperatorPortal';
 import './App.css';
 
 const SESSION_KEY = 'alostar.customer.session';
@@ -71,9 +72,6 @@ function Login({ onLogin }: { onLogin: (session: Session) => void }) {
     setError('');
     try {
       const next = await api.login(email.trim(), password);
-      if (next.user.role === 'OPERATOR') {
-        throw new Error('The operator workspace is not available yet.');
-      }
       onLogin(next);
     } catch (nextError) {
       setError(messageFor(nextError));
@@ -82,8 +80,10 @@ function Login({ onLogin }: { onLogin: (session: Session) => void }) {
     }
   }
 
-  function fillDemo(role: 'customer' | 'advisor') {
-    setEmail(role === 'customer' ? 'customer@demo.local' : 'advisor1@demo.local');
+  function fillDemo(role: 'customer' | 'advisor' | 'operator') {
+    setEmail(
+      role === 'customer' ? 'customer@demo.local' : role === 'advisor' ? 'advisor1@demo.local' : 'operator@demo.local',
+    );
     setPassword('DemoPass123!');
     setError('');
   }
@@ -162,6 +162,9 @@ function Login({ onLogin }: { onLogin: (session: Session) => void }) {
               </button>
               <button type="button" className="text-button" onClick={() => fillDemo('advisor')}>
                 Advisor
+              </button>
+              <button type="button" className="text-button" onClick={() => fillDemo('operator')}>
+                Operator
               </button>
             </div>
           </div>
@@ -662,11 +665,9 @@ function App() {
   }
 
   if (!session) return <Login onLogin={login} />;
-  return session.user.role === 'ADVISOR' ? (
-    <AdvisorPortal session={session} onLogout={logout} />
-  ) : (
-    <CustomerPortal session={session} onLogout={logout} />
-  );
+  if (session.user.role === 'ADVISOR') return <AdvisorPortal session={session} onLogout={logout} />;
+  if (session.user.role === 'OPERATOR') return <OperatorPortal session={session} onLogout={logout} />;
+  return <CustomerPortal session={session} onLogout={logout} />;
 }
 
 export default App;
