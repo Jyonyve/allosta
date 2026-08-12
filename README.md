@@ -7,6 +7,7 @@ Alostar is a full-stack MVP for arranging and operating consultations about heal
 - Customer login, accessible test results, computed appointment slots, reservation, cancellation, and consultation history
 - Advisor profile, availability management, consultation schedule, persisted draft records, and transactional finalization
 - Operator reporting, consultation oversight, external-consent verification, and no-show processing
+- Korean/English interface with Korean-first locale-aware dates and a persisted language preference
 - Test-result-scoped proxy consent through self-service approval or externally verified lawful process
 - PostgreSQL constraints for overlapping availability and active consultation conflicts
 - A disposable PostgreSQL 17 integration environment and GitHub Actions verification

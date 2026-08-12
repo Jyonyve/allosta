@@ -2,6 +2,8 @@
 
 React and Vite frontend with customer, advisor, and operator workspaces selected from the authenticated user role.
 
+The interface supports Korean and English. Korean is the default on first visit, and the selected language is persisted in local storage.
+
 ## Development
 
 From the repository root:

@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700&display=swap');
 
 :root {
-  font-family: 'DM Sans', system-ui, sans-serif;
+  font-family: 'DM Sans', 'Noto Sans KR', 'Malgun Gothic', system-ui, sans-serif;
   color: #20332f;
   background: #f6f8f3;
   font-synthesis: none;
@@ -55,8 +55,12 @@ p {
 h1,
 h2,
 h3 {
-  font-family: 'Manrope', sans-serif;
+  font-family: 'Manrope', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
   color: var(--ink);
+}
+
+:lang(ko) {
+  word-break: keep-all;
 }
 
 :focus-visible {

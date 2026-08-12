@@ -168,7 +168,34 @@
   background: radial-gradient(circle at 80% 8%, #edf4ee 0, transparent 34%), var(--paper);
 }
 .login-card {
+  position: relative;
   width: min(100%, 440px);
+}
+.login-language {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 24px;
+}
+.language-switcher {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.76);
+}
+.language-switcher button {
+  min-height: 28px;
+  padding: 4px 9px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+.language-switcher button.active {
+  background: var(--green);
+  color: white;
 }
 .login-card h2 {
   margin-bottom: 9px;
@@ -304,6 +331,9 @@
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
+}
+.account-menu .language-switcher {
+  margin-left: 4px;
 }
 .avatar {
   display: grid;

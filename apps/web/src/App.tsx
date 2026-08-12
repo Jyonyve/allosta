@@ -3,37 +3,12 @@ import type { FormEvent } from 'react';
 import { ApiError, api } from './api';
 import type { Consultation, Session, TestResult } from './api';
 import { AdvisorPortal } from './AdvisorPortal';
+import { LanguageSwitcher, useI18n } from './i18n';
 import { OperatorPortal } from './OperatorPortal';
 import './App.css';
 
 const SESSION_KEY = 'alostar.customer.session';
 const KST = 'Asia/Seoul';
-
-const dayFormatter = new Intl.DateTimeFormat('en-US', {
-  timeZone: KST,
-  weekday: 'short',
-  month: 'short',
-  day: 'numeric',
-});
-const fullDateFormatter = new Intl.DateTimeFormat('en-US', {
-  timeZone: KST,
-  year: 'numeric',
-  month: 'long',
-  day: 'numeric',
-});
-const timeFormatter = new Intl.DateTimeFormat('en-US', {
-  timeZone: KST,
-  hour: 'numeric',
-  minute: '2-digit',
-});
-const dateTimeFormatter = new Intl.DateTimeFormat('en-US', {
-  timeZone: KST,
-  weekday: 'short',
-  month: 'short',
-  day: 'numeric',
-  hour: 'numeric',
-  minute: '2-digit',
-});
 
 function readSession(): Session | null {
   try {
@@ -56,11 +31,12 @@ function dayKey(value: string) {
   return `${part('year')}-${part('month')}-${part('day')}`;
 }
 
-function messageFor(error: unknown) {
-  return error instanceof Error ? error.message : 'Something went wrong. Please try again.';
+function messageFor(error: unknown, t: (key: string) => string) {
+  return t(error instanceof Error ? error.message : 'Something went wrong. Please try again.');
 }
 
 function Login({ onLogin }: { onLogin: (session: Session) => void }) {
+  const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -74,7 +50,7 @@ function Login({ onLogin }: { onLogin: (session: Session) => void }) {
       const next = await api.login(email.trim(), password);
       onLogin(next);
     } catch (nextError) {
-      setError(messageFor(nextError));
+      setError(messageFor(nextError, t));
     } finally {
       setBusy(false);
     }
@@ -98,28 +74,32 @@ function Login({ onLogin }: { onLogin: (session: Session) => void }) {
           <span>alostar</span>
         </a>
         <div className="story-copy">
-          <p className="eyebrow eyebrow--light">Your results, made clearer</p>
-          <h1 id="welcome-title">A thoughtful conversation about your health results.</h1>
+          <p className="eyebrow eyebrow--light">{t('Your results, made clearer')}</p>
+          <h1 id="welcome-title">{t('A thoughtful conversation about your health results.')}</h1>
           <p>
-            Review your available test results, choose a convenient time, and connect with the right advisor—without
-            having to search for one.
+            {t(
+              'Review your available test results, choose a convenient time, and connect with the right advisor—without having to search for one.',
+            )}
           </p>
         </div>
         <div className="story-note">
           <span aria-hidden="true">✦</span>
-          <p>Secure, private, and centered on your questions.</p>
+          <p>{t('Secure, private, and centered on your questions.')}</p>
         </div>
       </section>
 
       <section className="login-panel" aria-labelledby="login-title">
         <div className="login-card">
-          <p className="eyebrow">Consultation portal</p>
-          <h2 id="login-title">Welcome back</h2>
-          <p className="muted">Sign in to review your results and consultations.</p>
+          <div className="login-language">
+            <LanguageSwitcher />
+          </div>
+          <p className="eyebrow">{t('Consultation portal')}</p>
+          <h2 id="login-title">{t('Welcome back')}</h2>
+          <p className="muted">{t('Sign in to review your results and consultations.')}</p>
 
           <form onSubmit={submit} className="login-form">
             <label>
-              Email address
+              {t('Email address')}
               <input
                 type="email"
                 autoComplete="email"
@@ -130,13 +110,13 @@ function Login({ onLogin }: { onLogin: (session: Session) => void }) {
               />
             </label>
             <label>
-              Password
+              {t('Password')}
               <input
                 type="password"
                 autoComplete="current-password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder="Enter your password"
+                placeholder={t('Enter your password')}
                 minLength={8}
                 required
               />
@@ -147,24 +127,24 @@ function Login({ onLogin }: { onLogin: (session: Session) => void }) {
               </p>
             )}
             <button className="button button--primary button--wide" disabled={busy}>
-              {busy ? 'Signing in…' : 'Sign in'}
+              {busy ? t('Signing in…') : t('Sign in')}
             </button>
           </form>
 
           <div className="demo-access">
             <div>
-              <strong>Trying the demo?</strong>
-              <span>Choose a seeded portal account.</span>
+              <strong>{t('Trying the demo?')}</strong>
+              <span>{t('Choose a seeded portal account.')}</span>
             </div>
             <div className="demo-buttons">
               <button type="button" className="text-button" onClick={() => fillDemo('customer')}>
-                Customer
+                {t('Customer')}
               </button>
               <button type="button" className="text-button" onClick={() => fillDemo('advisor')}>
-                Advisor
+                {t('Advisor')}
               </button>
               <button type="button" className="text-button" onClick={() => fillDemo('operator')}>
-                Operator
+                {t('Operator')}
               </button>
             </div>
           </div>
@@ -175,6 +155,7 @@ function Login({ onLogin }: { onLogin: (session: Session) => void }) {
 }
 
 function ResultCard({ result, selected, onSelect }: { result: TestResult; selected: boolean; onSelect: () => void }) {
+  const { t, formatDate } = useI18n();
   return (
     <button
       type="button"
@@ -183,13 +164,14 @@ function ResultCard({ result, selected, onSelect }: { result: TestResult; select
       aria-pressed={selected}
     >
       <span className="result-icon" aria-hidden="true">
-        {result.testType.name.charAt(0)}
+        {t(result.testType.name).charAt(0)}
       </span>
       <span className="result-copy">
-        <span className="result-category">{result.testType.category.name}</span>
-        <strong>{result.testType.name}</strong>
+        <span className="result-category">{t(result.testType.category.name)}</span>
+        <strong>{t(result.testType.name)}</strong>
         <span>
-          {result.examinee.name} · Tested {fullDateFormatter.format(new Date(result.testedAt))}
+          {result.examinee.name} · {t('Tested')}{' '}
+          {formatDate(result.testedAt, { year: 'numeric', month: 'long', day: 'numeric' })}
         </span>
       </span>
       <span className="result-check" aria-hidden="true">
@@ -210,6 +192,7 @@ function BookingView({
   onReserved: () => Promise<void>;
   onUnauthorized: () => void;
 }) {
+  const { t, formatDate } = useI18n();
   const [selectedId, setSelectedId] = useState(results[0]?.id ?? '');
   const [slots, setSlots] = useState<string[]>([]);
   const [selectedDay, setSelectedDay] = useState('');
@@ -242,13 +225,13 @@ function BookingView({
       .catch((error: unknown) => {
         if (!active) return;
         if (error instanceof ApiError && error.status === 401) onUnauthorized();
-        else setNotice({ kind: 'error', text: messageFor(error) });
+        else setNotice({ kind: 'error', text: messageFor(error, t) });
       })
       .finally(() => active && setLoadingSlots(false));
     return () => {
       active = false;
     };
-  }, [onUnauthorized, selectedId, token]);
+  }, [onUnauthorized, selectedId, t, token]);
 
   function selectResult(id: string) {
     if (id === selectedId) return;
@@ -266,11 +249,11 @@ function BookingView({
       await api.reserve(token, selectedResult.id, selectedSlot);
       setSlots((current) => current.filter((slot) => slot !== selectedSlot));
       setSelectedSlot('');
-      setNotice({ kind: 'success', text: 'Your consultation is reserved. You can review it in My consultations.' });
+      setNotice({ kind: 'success', text: t('Your consultation is reserved. You can review it in My consultations.') });
       await onReserved();
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) onUnauthorized();
-      else setNotice({ kind: 'error', text: messageFor(error) });
+      else setNotice({ kind: 'error', text: messageFor(error, t) });
     } finally {
       setBooking(false);
     }
@@ -280,8 +263,8 @@ function BookingView({
     return (
       <section className="empty-state">
         <span aria-hidden="true">○</span>
-        <h2>No test results are available yet</h2>
-        <p>Results you own or have approved consent to access will appear here.</p>
+        <h2>{t('No test results are available yet')}</h2>
+        <p>{t('Results you own or have approved consent to access will appear here.')}</p>
       </section>
     );
   }
@@ -291,10 +274,10 @@ function BookingView({
       <section className="workspace-section" aria-labelledby="results-title">
         <div className="section-heading">
           <div>
-            <p className="step-label">Step 1</p>
-            <h2 id="results-title">Choose a test result</h2>
+            <p className="step-label">{t('Step 1')}</p>
+            <h2 id="results-title">{t('Choose a test result')}</h2>
           </div>
-          <span className="count-pill">{results.length} available</span>
+          <span className="count-pill">{t('{count} available', { count: results.length })}</span>
         </div>
         <div className="result-list">
           {results.map((result) => (
@@ -308,7 +291,7 @@ function BookingView({
         </div>
         {selectedResult?.summary && (
           <div className="result-summary">
-            <span>Result note</span>
+            <span>{t('Result note')}</span>
             <p>{selectedResult.summary}</p>
           </div>
         )}
@@ -317,19 +300,19 @@ function BookingView({
       <section className="workspace-section slots-section" aria-labelledby="slots-title">
         <div className="section-heading">
           <div>
-            <p className="step-label">Step 2</p>
-            <h2 id="slots-title">Choose a time</h2>
+            <p className="step-label">{t('Step 2')}</p>
+            <h2 id="slots-title">{t('Choose a time')}</h2>
           </div>
-          <span className="timezone">Korea time</span>
+          <span className="timezone">{t('Korea time')}</span>
         </div>
 
         {loadingSlots ? (
           <div className="slot-loading" role="status">
-            <span className="spinner" /> Finding available advisors…
+            <span className="spinner" /> {t('Finding available advisors…')}
           </div>
         ) : days.length ? (
           <>
-            <div className="day-tabs" role="tablist" aria-label="Available dates">
+            <div className="day-tabs" role="tablist" aria-label={t('Available dates')}>
               {days.map((day) => {
                 const firstSlot = groupedSlots.get(day)?.[0];
                 return (
@@ -344,13 +327,13 @@ function BookingView({
                       setSelectedSlot('');
                     }}
                   >
-                    {firstSlot && dayFormatter.format(new Date(firstSlot))}
+                    {firstSlot && formatDate(firstSlot, { weekday: 'short', month: 'short', day: 'numeric' })}
                   </button>
                 );
               })}
             </div>
             <fieldset className="time-grid">
-              <legend className="sr-only">Available appointment times</legend>
+              <legend className="sr-only">{t('Available appointment times')}</legend>
               {(groupedSlots.get(selectedDay) ?? []).map((slot) => (
                 <label key={slot} className={selectedSlot === slot ? 'selected' : ''}>
                   <input
@@ -360,15 +343,23 @@ function BookingView({
                     checked={selectedSlot === slot}
                     onChange={() => setSelectedSlot(slot)}
                   />
-                  {timeFormatter.format(new Date(slot))}
+                  {formatDate(slot, { hour: 'numeric', minute: '2-digit' })}
                 </label>
               ))}
             </fieldset>
             <div className="booking-footer">
               <div>
-                <span>Your selection</span>
+                <span>{t('Your selection')}</span>
                 <strong>
-                  {selectedSlot ? dateTimeFormatter.format(new Date(selectedSlot)) : 'Select an available time'}
+                  {selectedSlot
+                    ? formatDate(selectedSlot, {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })
+                    : t('Select an available time')}
                 </strong>
               </div>
               <button
@@ -377,15 +368,15 @@ function BookingView({
                 disabled={!selectedSlot || booking}
                 onClick={reserve}
               >
-                {booking ? 'Reserving…' : 'Reserve consultation'}
+                {booking ? t('Reserving…') : t('Reserve consultation')}
               </button>
             </div>
           </>
         ) : (
           <div className="no-slots">
             <span aria-hidden="true">◷</span>
-            <h3>No available times right now</h3>
-            <p>Try another test result or check back after advisors add availability.</p>
+            <h3>{t('No available times right now')}</h3>
+            <p>{t('Try another test result or check back after advisors add availability.')}</p>
           </div>
         )}
         {notice && (
@@ -415,13 +406,22 @@ function ConsultationsView({
   loading: boolean;
   onCancel: (id: string) => Promise<void>;
 }) {
+  const { t, formatDate } = useI18n();
   const [now] = useState(() => Date.now());
   const [cancellingId, setCancellingId] = useState('');
   const [error, setError] = useState('');
 
   async function cancel(consultation: Consultation) {
     const confirmed = window.confirm(
-      `Cancel your consultation on ${dateTimeFormatter.format(new Date(consultation.scheduledStartAt))}?`,
+      t('Cancel your consultation on {date}?', {
+        date: formatDate(consultation.scheduledStartAt, {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+        }),
+      }),
     );
     if (!confirmed) return;
     setCancellingId(consultation.id);
@@ -429,7 +429,7 @@ function ConsultationsView({
     try {
       await onCancel(consultation.id);
     } catch (nextError) {
-      setError(messageFor(nextError));
+      setError(messageFor(nextError, t));
     } finally {
       setCancellingId('');
     }
@@ -438,15 +438,15 @@ function ConsultationsView({
   if (loading)
     return (
       <div className="page-loading" role="status">
-        <span className="spinner" /> Loading consultations…
+        <span className="spinner" /> {t('Loading consultations…')}
       </div>
     );
   if (!consultations.length)
     return (
       <section className="empty-state">
         <span aria-hidden="true">◇</span>
-        <h2>No consultations yet</h2>
-        <p>Once you reserve a time, the appointment will appear here.</p>
+        <h2>{t('No consultations yet')}</h2>
+        <p>{t('Once you reserve a time, the appointment will appear here.')}</p>
       </section>
     );
 
@@ -454,10 +454,10 @@ function ConsultationsView({
     <section className="consultations-section" aria-labelledby="consultations-title">
       <div className="section-heading section-heading--page">
         <div>
-          <p className="eyebrow">Your schedule</p>
-          <h2 id="consultations-title">My consultations</h2>
+          <p className="eyebrow">{t('Your schedule')}</p>
+          <h2 id="consultations-title">{t('My consultations')}</h2>
         </div>
-        <span className="count-pill">{consultations.length} total</span>
+        <span className="count-pill">{t('{count} total', { count: consultations.length })}</span>
       </div>
       {error && (
         <p className="notice notice--error" role="alert">
@@ -471,36 +471,40 @@ function ConsultationsView({
           return (
             <article className="consultation-card" key={consultation.id}>
               <div className="date-tile" aria-hidden="true">
-                <span>{new Intl.DateTimeFormat('en-US', { timeZone: KST, month: 'short' }).format(start)}</span>
-                <strong>{new Intl.DateTimeFormat('en-US', { timeZone: KST, day: '2-digit' }).format(start)}</strong>
+                <span>{formatDate(start, { month: 'short' })}</span>
+                <strong>{formatDate(start, { day: '2-digit' })}</strong>
               </div>
               <div className="consultation-main">
                 <div className="consultation-title-row">
                   <div>
                     <span className={`status status--${consultation.status.toLowerCase()}`}>
-                      {statusLabels[consultation.status]}
+                      {t(statusLabels[consultation.status])}
                     </span>
-                    <h3>{consultation.testResult.testType.name}</h3>
+                    <h3>{t(consultation.testResult.testType.name)}</h3>
                   </div>
-                  <strong className="consultation-time">{timeFormatter.format(start)}</strong>
+                  <strong className="consultation-time">
+                    {formatDate(start, { hour: 'numeric', minute: '2-digit' })}
+                  </strong>
                 </div>
                 <dl className="consultation-details">
                   <div>
-                    <dt>Examinee</dt>
+                    <dt>{t('Examinee')}</dt>
                     <dd>{consultation.testResult.examinee.name}</dd>
                   </div>
                   <div>
-                    <dt>Advisor</dt>
+                    <dt>{t('Advisor')}</dt>
                     <dd>{consultation.advisor.user.name}</dd>
                   </div>
                   <div>
-                    <dt>Date</dt>
-                    <dd>{dayFormatter.format(start)} · Korea time</dd>
+                    <dt>{t('Date')}</dt>
+                    <dd>
+                      {formatDate(start, { weekday: 'short', month: 'short', day: 'numeric' })} · {t('Korea time')}
+                    </dd>
                   </div>
                 </dl>
                 {consultation.record?.status === 'FINAL' && consultation.record.summary && (
                   <p className="record-summary">
-                    <strong>Consultation summary</strong>
+                    <strong>{t('Consultation summary')}</strong>
                     {consultation.record.summary}
                   </p>
                 )}
@@ -511,7 +515,7 @@ function ConsultationsView({
                     disabled={cancellingId === consultation.id}
                     onClick={() => cancel(consultation)}
                   >
-                    {cancellingId === consultation.id ? 'Cancelling…' : 'Cancel reservation'}
+                    {cancellingId === consultation.id ? t('Cancelling…') : t('Cancel reservation')}
                   </button>
                 )}
               </div>
@@ -524,6 +528,7 @@ function ConsultationsView({
 }
 
 function CustomerPortal({ session, onLogout }: { session: Session; onLogout: () => void }) {
+  const { t } = useI18n();
   const [view, setView] = useState<'book' | 'consultations'>('book');
   const [results, setResults] = useState<TestResult[]>([]);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
@@ -551,13 +556,13 @@ function CustomerPortal({ session, onLogout }: { session: Session; onLogout: () 
       .catch((nextError: unknown) => {
         if (!active) return;
         if (nextError instanceof ApiError && nextError.status === 401) handleUnauthorized();
-        else setError(messageFor(nextError));
+        else setError(messageFor(nextError, t));
       })
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
-  }, [handleUnauthorized, session.accessToken]);
+  }, [handleUnauthorized, session.accessToken, t]);
 
   async function cancelConsultation(id: string) {
     try {
@@ -578,12 +583,12 @@ function CustomerPortal({ session, onLogout }: { session: Session; onLogout: () 
           </span>
           <span>alostar</span>
         </a>
-        <nav aria-label="Customer portal">
+        <nav aria-label={t('Customer portal')}>
           <button className={view === 'book' ? 'active' : ''} onClick={() => setView('book')}>
-            Book consultation
+            {t('Book consultation')}
           </button>
           <button className={view === 'consultations' ? 'active' : ''} onClick={() => setView('consultations')}>
-            My consultations
+            {t('My consultations')}
           </button>
         </nav>
         <div className="account-menu">
@@ -594,8 +599,9 @@ function CustomerPortal({ session, onLogout }: { session: Session; onLogout: () 
             <strong>{session.user.name}</strong>
             <small>{session.user.email}</small>
           </span>
+          <LanguageSwitcher />
           <button type="button" className="logout-button" onClick={onLogout}>
-            Log out
+            {t('Log out')}
           </button>
         </div>
       </header>
@@ -603,21 +609,21 @@ function CustomerPortal({ session, onLogout }: { session: Session; onLogout: () 
       <main className="portal-main">
         <div className="page-intro">
           <div>
-            <p className="eyebrow">Good to see you, {session.user.name.split(' ')[0]}</p>
-            <h1>{view === 'book' ? 'Book a consultation' : 'Your consultation history'}</h1>
+            <p className="eyebrow">{t('Good to see you, {name}', { name: session.user.name.split(' ')[0] })}</p>
+            <h1>{view === 'book' ? t('Book a consultation') : t('Your consultation history')}</h1>
             <p>
               {view === 'book'
-                ? 'Choose a result and a time. We’ll assign the right available advisor.'
-                : 'Review upcoming appointments and completed conversations.'}
+                ? t('Choose a result and a time. We’ll assign the right available advisor.')
+                : t('Review upcoming appointments and completed conversations.')}
             </p>
           </div>
           {view === 'book' && (
             <div className="privacy-note">
               <span aria-hidden="true">✓</span>
               <p>
-                <strong>Advisor matched automatically</strong>
+                <strong>{t('Advisor matched automatically')}</strong>
                 <br />
-                Based on your test type and availability
+                {t('Based on your test type and availability')}
               </p>
             </div>
           )}
@@ -630,7 +636,7 @@ function CustomerPortal({ session, onLogout }: { session: Session; onLogout: () 
         )}
         {loading ? (
           <div className="page-loading" role="status">
-            <span className="spinner" /> Loading your health workspace…
+            <span className="spinner" /> {t('Loading your health workspace…')}
           </div>
         ) : view === 'book' ? (
           <BookingView
@@ -645,8 +651,8 @@ function CustomerPortal({ session, onLogout }: { session: Session; onLogout: () 
       </main>
 
       <footer>
-        <span>Alostar consultation services</span>
-        <span>Business timezone: Asia/Seoul</span>
+        <span>{t('Alostar consultation services')}</span>
+        <span>{t('Business timezone: Asia/Seoul')}</span>
       </footer>
     </div>
   );

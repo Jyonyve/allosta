@@ -1,16 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ApiError, api } from './api';
 import type { Dashboard, OperatorConsultation, PendingDelegation, Session } from './api';
+import { LanguageSwitcher, useI18n } from './i18n';
 
 type View = 'dashboard' | 'consultations' | 'consent';
-
-const dateTime = new Intl.DateTimeFormat('en-US', {
-  timeZone: 'Asia/Seoul',
-  month: 'short',
-  day: 'numeric',
-  hour: 'numeric',
-  minute: '2-digit',
-});
 
 const statusLabels: Record<string, string> = {
   RESERVED: 'Reserved',
@@ -24,8 +17,8 @@ function percent(value: number | null) {
   return value === null ? '—' : `${Math.round(value * 100)}%`;
 }
 
-function messageFor(error: unknown) {
-  return error instanceof Error ? error.message : 'The request could not be completed.';
+function messageFor(error: unknown, t: (key: string) => string) {
+  return t(error instanceof Error ? error.message : 'The request could not be completed.');
 }
 
 function totalCounts(counts: Dashboard['counts']) {
@@ -43,31 +36,32 @@ function DashboardView({
   batchNotice: string;
   onRunBatch: () => void;
 }) {
+  const { t } = useI18n();
   const total = totalCounts(data.counts);
   const statuses = ['RESERVED', 'DOCUMENTING', 'COMPLETED', 'NO_SHOW', 'CANCELLED'] as const;
 
   return (
     <>
-      <section className="operator-metric-grid" aria-label="Consultation metrics">
+      <section className="operator-metric-grid" aria-label={t('Consultation metrics')}>
         <article>
-          <span>Total consultations</span>
+          <span>{t('Total consultations')}</span>
           <strong>{total}</strong>
-          <small>All recorded appointments</small>
+          <small>{t('All recorded appointments')}</small>
         </article>
         <article>
-          <span>Completion rate</span>
+          <span>{t('Completion rate')}</span>
           <strong>{percent(data.completionRate)}</strong>
-          <small>Completed consultations</small>
+          <small>{t('Completed consultations')}</small>
         </article>
         <article>
-          <span>No-show rate</span>
+          <span>{t('No-show rate')}</span>
           <strong>{percent(data.noShowRate)}</strong>
-          <small>Appointments missed</small>
+          <small>{t('Appointments missed')}</small>
         </article>
         <article>
-          <span>Upcoming</span>
+          <span>{t('Upcoming')}</span>
           <strong>{data.counts.RESERVED ?? 0}</strong>
-          <small>Currently reserved</small>
+          <small>{t('Currently reserved')}</small>
         </article>
       </section>
 
@@ -75,8 +69,8 @@ function DashboardView({
         <section className="operator-card" aria-labelledby="status-title">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Service overview</p>
-              <h2 id="status-title">Consultation status</h2>
+              <p className="eyebrow">{t('Service overview')}</p>
+              <h2 id="status-title">{t('Consultation status')}</h2>
             </div>
           </div>
           <div className="status-bars">
@@ -85,7 +79,7 @@ function DashboardView({
               const width = total ? (count / total) * 100 : 0;
               return (
                 <div key={status}>
-                  <span>{statusLabels[status]}</span>
+                  <span>{t(statusLabels[status])}</span>
                   <div>
                     <i style={{ width: `${width}%` }} />
                   </div>
@@ -97,11 +91,11 @@ function DashboardView({
         </section>
 
         <section className="operator-card batch-card" aria-labelledby="batch-title">
-          <p className="eyebrow">Daily control</p>
-          <h2 id="batch-title">No-show processing</h2>
-          <p>Mark overdue reserved consultations as no-shows. This operation is safe to run more than once.</p>
+          <p className="eyebrow">{t('Daily control')}</p>
+          <h2 id="batch-title">{t('No-show processing')}</h2>
+          <p>{t('Mark overdue reserved consultations as no-shows. This operation is safe to run more than once.')}</p>
           <button className="button button--secondary" onClick={onRunBatch} disabled={runningBatch}>
-            {runningBatch ? 'Processing…' : 'Run no-show check'}
+            {runningBatch ? t('Processing…') : t('Run no-show check')}
           </button>
           {batchNotice && (
             <p className="operator-batch-notice" role="status">
@@ -114,20 +108,20 @@ function DashboardView({
       <section className="operator-card" aria-labelledby="advisor-title">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Team performance</p>
-            <h2 id="advisor-title">Advisor activity</h2>
+            <p className="eyebrow">{t('Team performance')}</p>
+            <h2 id="advisor-title">{t('Advisor activity')}</h2>
           </div>
         </div>
         <div className="operator-table-wrap">
           <table className="advisor-performance">
             <thead>
               <tr>
-                <th>Advisor</th>
-                <th>State</th>
-                <th>Reserved</th>
-                <th>Completed</th>
-                <th>Completion</th>
-                <th>No-show</th>
+                <th>{t('Advisor')}</th>
+                <th>{t('State')}</th>
+                <th>{t('Reserved')}</th>
+                <th>{t('Completed')}</th>
+                <th>{t('Completion')}</th>
+                <th>{t('No-show')}</th>
               </tr>
             </thead>
             <tbody>
@@ -138,7 +132,7 @@ function DashboardView({
                   </td>
                   <td>
                     <span className={`advisor-state advisor-state--${advisor.active ? 'active' : 'inactive'}`}>
-                      {advisor.active ? 'Active' : 'Inactive'}
+                      {advisor.active ? t('Active') : t('Inactive')}
                     </span>
                   </td>
                   <td>{advisor.counts.RESERVED ?? 0}</td>
@@ -150,14 +144,16 @@ function DashboardView({
             </tbody>
           </table>
         </div>
-        {!data.advisorStatistics.length && <p className="operator-empty-copy">No advisor activity is available yet.</p>}
+        {!data.advisorStatistics.length && (
+          <p className="operator-empty-copy">{t('No advisor activity is available yet.')}</p>
+        )}
       </section>
 
       <section className="operator-card" aria-labelledby="products-title">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Customer interest</p>
-            <h2 id="products-title">Interested products</h2>
+            <p className="eyebrow">{t('Customer interest')}</p>
+            <h2 id="products-title">{t('Interested products')}</h2>
           </div>
         </div>
         <div className="product-rankings">
@@ -165,14 +161,14 @@ function DashboardView({
             <div key={product.id}>
               <span>{index + 1}</span>
               <div>
-                <strong>{product.name}</strong>
-                <small>{product.category || 'Uncategorized'}</small>
+                <strong>{t(product.name)}</strong>
+                <small>{product.category ? t(product.category) : t('Uncategorized')}</small>
               </div>
               <b>{count}</b>
             </div>
           ))}
           {!data.interestedProducts.length && (
-            <p className="operator-empty-copy">No products have been recorded yet.</p>
+            <p className="operator-empty-copy">{t('No products have been recorded yet.')}</p>
           )}
         </div>
       </section>
@@ -181,74 +177,89 @@ function DashboardView({
 }
 
 function ConsultationDetail({ consultation }: { consultation: OperatorConsultation | null }) {
+  const { t, formatDate } = useI18n();
   if (!consultation)
     return (
       <section className="operator-card operator-detail operator-detail--empty">
         <span aria-hidden="true">↗</span>
-        <h2>Select a consultation</h2>
-        <p>Choose an appointment to inspect its operational record.</p>
+        <h2>{t('Select a consultation')}</h2>
+        <p>{t('Choose an appointment to inspect its operational record.')}</p>
       </section>
     );
   return (
     <section className="operator-card operator-detail" aria-live="polite">
       <div className="operator-detail-head">
         <div>
-          <p className="eyebrow">Consultation record</p>
-          <h2>{consultation.testResult.testType.name}</h2>
+          <p className="eyebrow">{t('Consultation record')}</p>
+          <h2>{t(consultation.testResult.testType.name)}</h2>
         </div>
         <span className={`status status--${consultation.status.toLowerCase()}`}>
-          {statusLabels[consultation.status]}
+          {t(statusLabels[consultation.status])}
         </span>
       </div>
       <dl>
         <div>
-          <dt>Scheduled</dt>
-          <dd>{dateTime.format(new Date(consultation.scheduledStartAt))}</dd>
+          <dt>{t('Scheduled')}</dt>
+          <dd>
+            {formatDate(consultation.scheduledStartAt, {
+              month: 'short',
+              day: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit',
+            })}
+          </dd>
         </div>
         <div>
-          <dt>Examinee</dt>
+          <dt>{t('Examinee')}</dt>
           <dd>{consultation.testResult.examinee.name}</dd>
         </div>
         <div>
-          <dt>Requester</dt>
+          <dt>{t('Requester')}</dt>
           <dd>
             {consultation.requester.name}
             <small>{consultation.requester.email}</small>
           </dd>
         </div>
         <div>
-          <dt>Advisor</dt>
+          <dt>{t('Advisor')}</dt>
           <dd>
             {consultation.advisor.user.name}
             <small>{consultation.advisor.user.email}</small>
           </dd>
         </div>
         <div>
-          <dt>Consent</dt>
+          <dt>{t('Consent')}</dt>
           <dd>
             {consultation.delegation
-              ? `${consultation.delegation.status} · ${consultation.delegation.consentMethod ?? 'Pending method'}`
-              : 'Direct access'}
+              ? `${t(consultation.delegation.status)} · ${t(consultation.delegation.consentMethod ?? 'Pending method')}`
+              : t('Direct access')}
           </dd>
         </div>
         <div>
-          <dt>Result date</dt>
-          <dd>{dateTime.format(new Date(consultation.testResult.testedAt))}</dd>
+          <dt>{t('Result date')}</dt>
+          <dd>
+            {formatDate(consultation.testResult.testedAt, {
+              month: 'short',
+              day: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit',
+            })}
+          </dd>
         </div>
       </dl>
       <div className="operator-record">
-        <h3>Consultation notes</h3>
+        <h3>{t('Consultation notes')}</h3>
         {consultation.record ? (
           <>
-            <p>{consultation.record.summary || 'No summary entered.'}</p>
+            <p>{consultation.record.summary || t('No summary entered.')}</p>
             <div className="record-products">
               {consultation.record.interestedProducts.map(({ product }) => (
-                <span key={product.id}>{product.name}</span>
+                <span key={product.id}>{t(product.name)}</span>
               ))}
             </div>
           </>
         ) : (
-          <p className="muted">No consultation record has been started.</p>
+          <p className="muted">{t('No consultation record has been started.')}</p>
         )}
       </div>
     </section>
@@ -256,6 +267,7 @@ function ConsultationDetail({ consultation }: { consultation: OperatorConsultati
 }
 
 function ConsultationsView({ consultations }: { consultations: OperatorConsultation[] }) {
+  const { t, formatDate } = useI18n();
   const [filter, setFilter] = useState('ALL');
   const [selectedId, setSelectedId] = useState(consultations[0]?.id ?? '');
   const filtered = useMemo(
@@ -268,19 +280,19 @@ function ConsultationsView({ consultations }: { consultations: OperatorConsultat
       <section className="operator-card operator-list" aria-labelledby="consultations-title">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Operations log</p>
-            <h2 id="consultations-title">All consultations</h2>
+            <p className="eyebrow">{t('Operations log')}</p>
+            <h2 id="consultations-title">{t('All consultations')}</h2>
           </div>
           <select
             className="filter-select"
-            aria-label="Filter by status"
+            aria-label={t('Filter by status')}
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
           >
-            <option value="ALL">All statuses</option>
+            <option value="ALL">{t('All statuses')}</option>
             {Object.entries(statusLabels).map(([value, label]) => (
               <option value={value} key={value}>
-                {label}
+                {t(label)}
               </option>
             ))}
           </select>
@@ -293,15 +305,22 @@ function ConsultationsView({ consultations }: { consultations: OperatorConsultat
               className={item.id === selectedId ? 'selected' : ''}
               onClick={() => setSelectedId(item.id)}
             >
-              <span className="operator-list-date">{dateTime.format(new Date(item.scheduledStartAt))}</span>
-              <strong>{item.testResult.testType.name}</strong>
+              <span className="operator-list-date">
+                {formatDate(item.scheduledStartAt, {
+                  month: 'short',
+                  day: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })}
+              </span>
+              <strong>{t(item.testResult.testType.name)}</strong>
               <small>
                 {item.testResult.examinee.name} · {item.advisor.user.name}
               </small>
-              <span className={`status status--${item.status.toLowerCase()}`}>{statusLabels[item.status]}</span>
+              <span className={`status status--${item.status.toLowerCase()}`}>{t(statusLabels[item.status])}</span>
             </button>
           ))}
-          {!filtered.length && <p className="operator-empty-copy">No consultations match this filter.</p>}
+          {!filtered.length && <p className="operator-empty-copy">{t('No consultations match this filter.')}</p>}
         </div>
       </section>
       <ConsultationDetail consultation={selected} />
@@ -318,20 +337,21 @@ function ConsentView({
   verifyingId: string;
   onVerify: (id: string) => void;
 }) {
+  const { t, formatDate } = useI18n();
   return (
     <section className="operator-card consent-queue" aria-labelledby="consent-title">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">Access governance</p>
-          <h2 id="consent-title">External consent queue</h2>
+          <p className="eyebrow">{t('Access governance')}</p>
+          <h2 id="consent-title">{t('External consent queue')}</h2>
         </div>
-        <strong className="consent-summary">{pending.length} pending</strong>
+        <strong className="consent-summary">{t('{count} pending', { count: pending.length })}</strong>
       </div>
       <div className="legal-note">
         <span aria-hidden="true">!</span>
         <p>
-          <strong>Verify only after completing the lawful external process.</strong> Approval grants the delegate access
-          to the examinee’s test result.
+          <strong>{t('Verify only after completing the lawful external process.')}</strong>{' '}
+          {t('Approval grants the delegate access to the examinee’s test result.')}
         </p>
       </div>
       <div className="consent-list">
@@ -345,25 +365,34 @@ function ConsentView({
               <small>{item.delegate.email}</small>
             </div>
             <div>
-              <span>Requests access to</span>
+              <span>{t('Requests access to')}</span>
               <strong>
-                {item.testResult.examinee.name} · {item.testResult.testType.name}
+                {item.testResult.examinee.name} · {t(item.testResult.testType.name)}
               </strong>
-              <small>Submitted {dateTime.format(new Date(item.createdAt))}</small>
+              <small>
+                {t('Submitted {date}', {
+                  date: formatDate(item.createdAt, {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                  }),
+                })}
+              </small>
             </div>
             <button
               className="button button--primary"
               disabled={verifyingId === item.id}
               onClick={() => onVerify(item.id)}
             >
-              {verifyingId === item.id ? 'Verifying…' : 'Verify consent'}
+              {verifyingId === item.id ? t('Verifying…') : t('Verify consent')}
             </button>
           </article>
         ))}
         {!pending.length && (
           <div className="operator-empty-copy">
-            <strong>Queue clear</strong>
-            <p>There are no external consent requests awaiting verification.</p>
+            <strong>{t('Queue clear')}</strong>
+            <p>{t('There are no external consent requests awaiting verification.')}</p>
           </div>
         )}
       </div>
@@ -372,6 +401,7 @@ function ConsentView({
 }
 
 export function OperatorPortal({ session, onLogout }: { session: Session; onLogout: () => void }) {
+  const { t } = useI18n();
   const [view, setView] = useState<View>('dashboard');
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [consultations, setConsultations] = useState<OperatorConsultation[]>([]);
@@ -396,11 +426,11 @@ export function OperatorPortal({ session, onLogout }: { session: Session; onLogo
       setPending(nextPending);
     } catch (nextError) {
       if (nextError instanceof ApiError && nextError.status === 401) onLogout();
-      else setError(messageFor(nextError));
+      else setError(messageFor(nextError, t));
     } finally {
       setLoading(false);
     }
-  }, [onLogout, session.accessToken]);
+  }, [onLogout, session.accessToken, t]);
 
   useEffect(() => {
     let active = true;
@@ -418,23 +448,27 @@ export function OperatorPortal({ session, onLogout }: { session: Session; onLogo
       .catch((nextError: unknown) => {
         if (!active) return;
         if (nextError instanceof ApiError && nextError.status === 401) onLogout();
-        else setError(messageFor(nextError));
+        else setError(messageFor(nextError, t));
       })
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
-  }, [onLogout, session.accessToken]);
+  }, [onLogout, session.accessToken, t]);
 
   async function runBatch() {
     setRunningBatch(true);
     setBatchNotice('');
     try {
       const result = await api.runNoShowBatch(session.accessToken);
-      setBatchNotice(`${result.count} consultation${result.count === 1 ? '' : 's'} marked as no-show.`);
+      setBatchNotice(
+        t(result.count === 1 ? '{count} consultation marked as no-show.' : '{count} consultations marked as no-show.', {
+          count: result.count,
+        }),
+      );
       await load();
     } catch (nextError) {
-      setBatchNotice(messageFor(nextError));
+      setBatchNotice(messageFor(nextError, t));
     } finally {
       setRunningBatch(false);
     }
@@ -448,7 +482,7 @@ export function OperatorPortal({ session, onLogout }: { session: Session; onLogo
       setPending((current) => current.filter((item) => item.id !== id));
     } catch (nextError) {
       if (nextError instanceof ApiError && nextError.status === 401) onLogout();
-      else setError(messageFor(nextError));
+      else setError(messageFor(nextError, t));
     } finally {
       setVerifyingId('');
     }
@@ -462,18 +496,18 @@ export function OperatorPortal({ session, onLogout }: { session: Session; onLogo
             a
           </span>
           <span>
-            alostar <em>operations</em>
+            alostar <em>{t('Operations portal')}</em>
           </span>
         </a>
-        <nav aria-label="Operator navigation">
+        <nav aria-label={t('Operations portal')}>
           <button className={view === 'dashboard' ? 'active' : ''} onClick={() => setView('dashboard')}>
-            Dashboard
+            {t('Dashboard')}
           </button>
           <button className={view === 'consultations' ? 'active' : ''} onClick={() => setView('consultations')}>
-            Consultations
+            {t('Consultations')}
           </button>
           <button className={view === 'consent' ? 'active' : ''} onClick={() => setView('consent')}>
-            Consent {pending.length > 0 && <span className="nav-count">{pending.length}</span>}
+            {t('Consent')} {pending.length > 0 && <span className="nav-count">{pending.length}</span>}
           </button>
         </nav>
         <div className="account-menu">
@@ -482,30 +516,31 @@ export function OperatorPortal({ session, onLogout }: { session: Session; onLogo
           </span>
           <div>
             <strong>{session.user.name}</strong>
-            <small>Operator</small>
+            <small>{t('Operator')}</small>
           </div>
+          <LanguageSwitcher />
           <button type="button" className="text-button" onClick={onLogout}>
-            Log out
+            {t('Log out')}
           </button>
         </div>
       </header>
       <main className="portal-main operator-main">
         <div className="page-intro">
           <div>
-            <p className="eyebrow">Operations center</p>
+            <p className="eyebrow">{t('Operations center')}</p>
             <h1>
               {view === 'dashboard'
-                ? 'Service at a glance'
+                ? t('Service at a glance')
                 : view === 'consultations'
-                  ? 'Consultation oversight'
-                  : 'Consent verification'}
+                  ? t('Consultation oversight')
+                  : t('Consent verification')}
             </h1>
             <p>
               {view === 'dashboard'
-                ? 'Monitor service health, advisor activity, and customer interest.'
+                ? t('Monitor service health, advisor activity, and customer interest.')
                 : view === 'consultations'
-                  ? 'Review every consultation and its operational context.'
-                  : 'Review externally confirmed consent before granting access.'}
+                  ? t('Review every consultation and its operational context.')
+                  : t('Review externally confirmed consent before granting access.')}
             </p>
           </div>
         </div>
@@ -516,7 +551,7 @@ export function OperatorPortal({ session, onLogout }: { session: Session; onLogo
         )}
         {loading ? (
           <div className="page-loading" role="status">
-            <span className="spinner" /> Loading operations workspace…
+            <span className="spinner" /> {t('Loading operations workspace…')}
           </div>
         ) : view === 'dashboard' && dashboard ? (
           <DashboardView data={dashboard} runningBatch={runningBatch} batchNotice={batchNotice} onRunBatch={runBatch} />
@@ -527,8 +562,8 @@ export function OperatorPortal({ session, onLogout }: { session: Session; onLogo
         )}
       </main>
       <footer>
-        <span>Alostar operations center</span>
-        <span>Business timezone: Asia/Seoul</span>
+        <span>{t('Alostar operations center')}</span>
+        <span>{t('Business timezone: Asia/Seoul')}</span>
       </footer>
     </div>
   );

@@ -2,28 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ApiError, api } from './api';
 import type { AdvisorAvailability, AdvisorConsultation, AdvisorProfile, Product, RecordInput, Session } from './api';
+import { LanguageSwitcher, useI18n } from './i18n';
 
 const KST = 'Asia/Seoul';
-const dateFormatter = new Intl.DateTimeFormat('en-US', {
-  timeZone: KST,
-  weekday: 'short',
-  month: 'short',
-  day: 'numeric',
-});
-const fullDateFormatter = new Intl.DateTimeFormat('en-US', {
-  timeZone: KST,
-  year: 'numeric',
-  month: 'long',
-  day: 'numeric',
-});
-const timeFormatter = new Intl.DateTimeFormat('en-US', {
-  timeZone: KST,
-  hour: 'numeric',
-  minute: '2-digit',
-});
-
-function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : 'The request could not be completed.';
+function errorMessage(error: unknown, t: (key: string) => string) {
+  return t(error instanceof Error ? error.message : 'The request could not be completed.');
 }
 
 function kstParts(value: string | Date) {
@@ -66,6 +49,7 @@ function AvailabilityView({
   onChanged: () => Promise<void>;
   onUnauthorized: () => void;
 }) {
+  const { t, formatDate } = useI18n();
   const [editingId, setEditingId] = useState('');
   const [date, setDate] = useState(() => tomorrowKst());
   const [startsAt, setStartsAt] = useState('11:00');
@@ -98,11 +82,11 @@ function AvailabilityView({
     const start = new Date(kstInputToIso(date, startsAt));
     const end = new Date(kstInputToIso(date, endsAt));
     if (!(start < end)) {
-      setNotice({ kind: 'error', text: 'End time must be later than start time on the same date.' });
+      setNotice({ kind: 'error', text: t('End time must be later than start time on the same date.') });
       return;
     }
     if (availability.some((item) => item.id !== editingId && overlaps(start.getTime(), end.getTime(), item))) {
-      setNotice({ kind: 'error', text: 'This range overlaps availability you already registered.' });
+      setNotice({ kind: 'error', text: t('This range overlaps availability you already registered.') });
       return;
     }
     setBusy(true);
@@ -110,28 +94,35 @@ function AvailabilityView({
       if (editingId) await api.updateAvailability(token, editingId, start.toISOString(), end.toISOString());
       else await api.createAvailability(token, start.toISOString(), end.toISOString());
       await onChanged();
-      setNotice({ kind: 'success', text: editingId ? 'Availability updated.' : 'Availability added.' });
+      setNotice({ kind: 'success', text: editingId ? t('Availability updated.') : t('Availability added.') });
       reset();
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) onUnauthorized();
-      else setNotice({ kind: 'error', text: errorMessage(error) });
+      else setNotice({ kind: 'error', text: errorMessage(error, t) });
     } finally {
       setBusy(false);
     }
   }
 
   async function remove(item: AdvisorAvailability) {
-    if (!window.confirm(`Delete availability on ${dateFormatter.format(new Date(item.startsAt))}?`)) return;
+    if (
+      !window.confirm(
+        t('Delete availability on {date}?', {
+          date: formatDate(item.startsAt, { weekday: 'short', month: 'short', day: 'numeric' }),
+        }),
+      )
+    )
+      return;
     setDeletingId(item.id);
     setNotice(null);
     try {
       await api.deleteAvailability(token, item.id);
       await onChanged();
       if (editingId === item.id) reset();
-      setNotice({ kind: 'success', text: 'Availability deleted.' });
+      setNotice({ kind: 'success', text: t('Availability deleted.') });
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) onUnauthorized();
-      else setNotice({ kind: 'error', text: errorMessage(error) });
+      else setNotice({ kind: 'error', text: errorMessage(error, t) });
     } finally {
       setDeletingId('');
     }
@@ -151,29 +142,30 @@ function AvailabilityView({
       <section className="advisor-card availability-list-card" aria-labelledby="availability-title">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Consulting hours</p>
-            <h2 id="availability-title">Your availability</h2>
+            <p className="eyebrow">{t('Consulting hours')}</p>
+            <h2 id="availability-title">{t('Your availability')}</h2>
           </div>
-          <span className="count-pill">{availability.length} ranges</span>
+          <span className="count-pill">{t('{count} ranges', { count: availability.length })}</span>
         </div>
         {grouped.length ? (
           <div className="availability-days">
             {grouped.map(([key, items]) => (
               <section className="availability-day" key={key}>
                 <div className="availability-date">
-                  <strong>{dateFormatter.format(new Date(items[0].startsAt))}</strong>
-                  <span>{fullDateFormatter.format(new Date(items[0].startsAt))}</span>
+                  <strong>{formatDate(items[0].startsAt, { weekday: 'short', month: 'short', day: 'numeric' })}</strong>
+                  <span>{formatDate(items[0].startsAt, { year: 'numeric', month: 'long', day: 'numeric' })}</span>
                 </div>
                 <div className="availability-ranges">
                   {items.map((item) => (
                     <div className="availability-range" key={item.id}>
                       <span aria-hidden="true">◷</span>
                       <strong>
-                        {timeFormatter.format(new Date(item.startsAt))}–{timeFormatter.format(new Date(item.endsAt))}
+                        {formatDate(item.startsAt, { hour: 'numeric', minute: '2-digit' })}–
+                        {formatDate(item.endsAt, { hour: 'numeric', minute: '2-digit' })}
                       </strong>
                       <div>
                         <button type="button" onClick={() => edit(item)}>
-                          Edit
+                          {t('Edit')}
                         </button>
                         <button
                           type="button"
@@ -181,7 +173,7 @@ function AvailabilityView({
                           disabled={deletingId === item.id}
                           onClick={() => remove(item)}
                         >
-                          {deletingId === item.id ? 'Deleting…' : 'Delete'}
+                          {deletingId === item.id ? t('Deleting…') : t('Delete')}
                         </button>
                       </div>
                     </div>
@@ -193,8 +185,8 @@ function AvailabilityView({
         ) : (
           <div className="no-slots">
             <span aria-hidden="true">◷</span>
-            <h3>No availability registered</h3>
-            <p>Add your first date and time range using the form.</p>
+            <h3>{t('No availability registered')}</h3>
+            <p>{t('Add your first date and time range using the form.')}</p>
           </div>
         )}
       </section>
@@ -204,17 +196,17 @@ function AvailabilityView({
         id="availability-form"
         aria-labelledby="availability-form-title"
       >
-        <p className="step-label">{editingId ? 'Editing range' : 'New range'}</p>
-        <h2 id="availability-form-title">{editingId ? 'Update availability' : 'Add availability'}</h2>
-        <p className="muted">Add one or more ranges for a date. Adjacent ranges are allowed.</p>
+        <p className="step-label">{editingId ? t('Editing range') : t('New range')}</p>
+        <h2 id="availability-form-title">{editingId ? t('Update availability') : t('Add availability')}</h2>
+        <p className="muted">{t('Add one or more ranges for a date. Adjacent ranges are allowed.')}</p>
         <form className="availability-form" onSubmit={submit}>
           <label>
-            Date
+            {t('Date')}
             <input type="date" value={date} onChange={(event) => setDate(event.target.value)} required />
           </label>
           <div className="time-input-row">
             <label>
-              Start time
+              {t('Start time')}
               <input
                 type="time"
                 step="1800"
@@ -224,7 +216,7 @@ function AvailabilityView({
               />
             </label>
             <label>
-              End time
+              {t('End time')}
               <input
                 type="time"
                 step="1800"
@@ -242,11 +234,11 @@ function AvailabilityView({
           <div className="form-actions">
             {editingId && (
               <button className="button button--secondary" type="button" onClick={reset}>
-                Cancel edit
+                {t('Cancel edit')}
               </button>
             )}
             <button className="button button--primary" disabled={busy}>
-              {busy ? 'Saving…' : editingId ? 'Update range' : 'Add range'}
+              {busy ? t('Saving…') : editingId ? t('Update range') : t('Add range')}
             </button>
           </div>
         </form>
@@ -276,6 +268,7 @@ function RecordEditor({
   onUpdated: () => Promise<void>;
   onUnauthorized: () => void;
 }) {
+  const { t } = useI18n();
   const record = consultation.record;
   const final = record?.status === 'FINAL';
   const editable = consultation.status === 'RESERVED' || consultation.status === 'DOCUMENTING';
@@ -299,20 +292,23 @@ function RecordEditor({
 
   async function save(finalize: boolean) {
     if (finalize && !summary.trim()) {
-      setNotice({ kind: 'error', text: 'Add a consultation summary before finalizing.' });
+      setNotice({ kind: 'error', text: t('Add a consultation summary before finalizing.') });
       return;
     }
-    if (finalize && !window.confirm('Finalize this record? Final records cannot be edited.')) return;
+    if (finalize && !window.confirm(t('Finalize this record? Final records cannot be edited.'))) return;
     setBusy(finalize ? 'final' : 'draft');
     setNotice(null);
     try {
       if (finalize) await api.finalizeRecord(token, consultation.id, input);
       else await api.saveDraft(token, consultation.id, input);
       await onUpdated();
-      setNotice({ kind: 'success', text: finalize ? 'Record finalized and consultation completed.' : 'Draft saved.' });
+      setNotice({
+        kind: 'success',
+        text: finalize ? t('Record finalized and consultation completed.') : t('Draft saved.'),
+      });
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) onUnauthorized();
-      else setNotice({ kind: 'error', text: errorMessage(error) });
+      else setNotice({ kind: 'error', text: errorMessage(error, t) });
     } finally {
       setBusy('');
     }
@@ -322,7 +318,7 @@ function RecordEditor({
     return (
       <div className="record-locked">
         <span aria-hidden="true">—</span>
-        <p>A record cannot be created for this consultation status.</p>
+        <p>{t('A record cannot be created for this consultation status.')}</p>
       </div>
     );
   }
@@ -331,37 +327,39 @@ function RecordEditor({
     <section className="record-editor" aria-labelledby="record-title">
       <div className="record-heading">
         <div>
-          <p className="step-label">Consultation record</p>
-          <h3 id="record-title">{final ? 'Final record' : record ? 'Continue draft' : 'Start documentation'}</h3>
+          <p className="step-label">{t('Consultation record')}</p>
+          <h3 id="record-title">
+            {final ? t('Final record') : record ? t('Continue draft') : t('Start documentation')}
+          </h3>
         </div>
         {record && <span className={`status status--${record.status.toLowerCase()}`}>{record.status}</span>}
       </div>
       <fieldset disabled={final || Boolean(busy)}>
         <label>
-          Main question
+          {t('Main question')}
           <textarea
             rows={2}
             value={mainQuestion}
             onChange={(event) => setMainQuestion(event.target.value)}
-            placeholder="What did the customer want to understand?"
+            placeholder={t('What did the customer want to understand?')}
           />
         </label>
         <label>
-          Consultation summary
+          {t('Consultation summary')}
           <textarea
             rows={4}
             value={summary}
             onChange={(event) => setSummary(event.target.value)}
-            placeholder="Summarize the conversation and guidance provided."
+            placeholder={t('Summarize the conversation and guidance provided.')}
           />
         </label>
         <label>
-          Advisor memo
+          {t('Advisor memo')}
           <textarea
             rows={3}
             value={memo}
             onChange={(event) => setMemo(event.target.value)}
-            placeholder="Internal notes for this consultation"
+            placeholder={t('Internal notes for this consultation')}
           />
         </label>
         <label className="checkbox-row">
@@ -371,24 +369,24 @@ function RecordEditor({
             onChange={(event) => setFollowUpRequired(event.target.checked)}
           />
           <span>
-            <strong>Follow-up required</strong>
-            <small>Flag this consultation for another contact.</small>
+            <strong>{t('Follow-up required')}</strong>
+            <small>{t('Flag this consultation for another contact.')}</small>
           </span>
         </label>
         {followUpRequired && (
           <label>
-            Follow-up note
+            {t('Follow-up note')}
             <textarea
               rows={2}
               value={followUpNote}
               onChange={(event) => setFollowUpNote(event.target.value)}
-              placeholder="What should happen next?"
+              placeholder={t('What should happen next?')}
             />
           </label>
         )}
         <div className="product-fieldset">
-          <span>Interested products</span>
-          <p>Select products the customer expressed interest in. This does not create an order.</p>
+          <span>{t('Interested products')}</span>
+          <p>{t('Select products the customer expressed interest in. This does not create an order.')}</p>
           <div className="product-options">
             {products.map((product) => (
               <label key={product.id} className={productIds.includes(product.id) ? 'selected' : ''}>
@@ -402,8 +400,8 @@ function RecordEditor({
                   }
                 />
                 <span>
-                  <strong>{product.name}</strong>
-                  <small>{product.category ?? 'Product'}</small>
+                  <strong>{t(product.name)}</strong>
+                  <small>{product.category ? t(product.category) : t('Product')}</small>
                 </span>
               </label>
             ))}
@@ -423,10 +421,10 @@ function RecordEditor({
             disabled={Boolean(busy)}
             onClick={() => save(false)}
           >
-            {busy === 'draft' ? 'Saving…' : 'Save draft'}
+            {busy === 'draft' ? t('Saving…') : t('Save draft')}
           </button>
           <button type="button" className="button button--primary" disabled={Boolean(busy)} onClick={() => save(true)}>
-            {busy === 'final' ? 'Finalizing…' : 'Finalize & complete'}
+            {busy === 'final' ? t('Finalizing…') : t('Finalize & complete')}
           </button>
         </div>
       )}
@@ -447,6 +445,7 @@ function ScheduleView({
   onUpdated: () => Promise<void>;
   onUnauthorized: () => void;
 }) {
+  const { t, formatDate } = useI18n();
   const [selectedId, setSelectedId] = useState(consultations[0]?.id ?? '');
   const selected = consultations.find((item) => item.id === selectedId) ?? consultations[0];
 
@@ -454,8 +453,8 @@ function ScheduleView({
     return (
       <section className="empty-state">
         <span aria-hidden="true">◇</span>
-        <h2>No consultations assigned</h2>
-        <p>New reservations assigned to you will appear here.</p>
+        <h2>{t('No consultations assigned')}</h2>
+        <p>{t('New reservations assigned to you will appear here.')}</p>
       </section>
     );
 
@@ -464,8 +463,8 @@ function ScheduleView({
       <section className="advisor-card schedule-list" aria-labelledby="schedule-title">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Assigned to you</p>
-            <h2 id="schedule-title">Consultations</h2>
+            <p className="eyebrow">{t('Assigned to you')}</p>
+            <h2 id="schedule-title">{t('Consultations')}</h2>
           </div>
           <span className="count-pill">{consultations.length}</span>
         </div>
@@ -478,14 +477,14 @@ function ScheduleView({
               onClick={() => setSelectedId(item.id)}
             >
               <span className="appointment-date">
-                <strong>{timeFormatter.format(new Date(item.scheduledStartAt))}</strong>
-                <small>{dateFormatter.format(new Date(item.scheduledStartAt))}</small>
+                <strong>{formatDate(item.scheduledStartAt, { hour: 'numeric', minute: '2-digit' })}</strong>
+                <small>{formatDate(item.scheduledStartAt, { weekday: 'short', month: 'short', day: 'numeric' })}</small>
               </span>
               <span className="appointment-person">
                 <strong>{item.testResult.examinee.name}</strong>
-                <small>{item.testResult.testType.name}</small>
+                <small>{t(item.testResult.testType.name)}</small>
               </span>
-              <span className={`status status--${item.status.toLowerCase()}`}>{advisorStatus[item.status]}</span>
+              <span className={`status status--${item.status.toLowerCase()}`}>{t(advisorStatus[item.status])}</span>
             </button>
           ))}
         </div>
@@ -496,37 +495,37 @@ function ScheduleView({
           <section className="advisor-card consultation-overview">
             <div className="overview-top">
               <div>
-                <p className="eyebrow">Consultation detail</p>
+                <p className="eyebrow">{t('Consultation detail')}</p>
                 <h2>{selected.testResult.examinee.name}</h2>
               </div>
               <span className={`status status--${selected.status.toLowerCase()}`}>
-                {advisorStatus[selected.status]}
+                {t(advisorStatus[selected.status])}
               </span>
             </div>
             <dl>
               <div>
-                <dt>Scheduled</dt>
+                <dt>{t('Scheduled')}</dt>
                 <dd>
-                  {dateFormatter.format(new Date(selected.scheduledStartAt))} ·{' '}
-                  {timeFormatter.format(new Date(selected.scheduledStartAt))}
+                  {formatDate(selected.scheduledStartAt, { weekday: 'short', month: 'short', day: 'numeric' })} ·{' '}
+                  {formatDate(selected.scheduledStartAt, { hour: 'numeric', minute: '2-digit' })}
                 </dd>
               </div>
               <div>
-                <dt>Requester</dt>
+                <dt>{t('Requester')}</dt>
                 <dd>{selected.requester.name}</dd>
               </div>
               <div>
-                <dt>Test type</dt>
-                <dd>{selected.testResult.testType.name}</dd>
+                <dt>{t('Test type')}</dt>
+                <dd>{t(selected.testResult.testType.name)}</dd>
               </div>
               <div>
-                <dt>Tested</dt>
-                <dd>{fullDateFormatter.format(new Date(selected.testResult.testedAt))}</dd>
+                <dt>{t('Tested')}</dt>
+                <dd>{formatDate(selected.testResult.testedAt, { year: 'numeric', month: 'long', day: 'numeric' })}</dd>
               </div>
             </dl>
             {selected.testResult.summary && (
               <div className="health-result-note">
-                <strong>Test result note</strong>
+                <strong>{t('Test result note')}</strong>
                 <p>{selected.testResult.summary}</p>
               </div>
             )}
@@ -546,6 +545,7 @@ function ScheduleView({
 }
 
 export function AdvisorPortal({ session, onLogout }: { session: Session; onLogout: () => void }) {
+  const { t } = useI18n();
   const [view, setView] = useState<'schedule' | 'availability'>('schedule');
   const [profile, setProfile] = useState<AdvisorProfile | null>(null);
   const [availability, setAvailability] = useState<AdvisorAvailability[]>([]);
@@ -583,13 +583,13 @@ export function AdvisorPortal({ session, onLogout }: { session: Session; onLogou
       .catch((nextError: unknown) => {
         if (!active) return;
         if (nextError instanceof ApiError && nextError.status === 401) onUnauthorized();
-        else setError(errorMessage(nextError));
+        else setError(errorMessage(nextError, t));
       })
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
-  }, [onUnauthorized, session.accessToken]);
+  }, [onUnauthorized, session.accessToken, t]);
 
   const upcoming = consultations.filter(
     (item) => item.status === 'RESERVED' && new Date(item.scheduledStartAt).getTime() > now,
@@ -604,14 +604,14 @@ export function AdvisorPortal({ session, onLogout }: { session: Session; onLogou
             a
           </span>
           <span>alostar</span>
-          <em>Advisor</em>
+          <em>{t('Advisor')}</em>
         </a>
-        <nav aria-label="Advisor portal">
+        <nav aria-label={t('Advisor portal')}>
           <button className={view === 'schedule' ? 'active' : ''} onClick={() => setView('schedule')}>
-            Schedule
+            {t('Schedule')}
           </button>
           <button className={view === 'availability' ? 'active' : ''} onClick={() => setView('availability')}>
-            Availability
+            {t('Availability')}
           </button>
         </nav>
         <div className="account-menu">
@@ -620,10 +620,11 @@ export function AdvisorPortal({ session, onLogout }: { session: Session; onLogou
           </span>
           <span className="account-copy">
             <strong>{session.user.name}</strong>
-            <small>{profile?.active === false ? 'Inactive advisor' : 'Active advisor'}</small>
+            <small>{profile?.active === false ? t('Inactive advisor') : t('Active advisor')}</small>
           </span>
+          <LanguageSwitcher />
           <button type="button" className="logout-button" onClick={onLogout}>
-            Log out
+            {t('Log out')}
           </button>
         </div>
       </header>
@@ -631,36 +632,36 @@ export function AdvisorPortal({ session, onLogout }: { session: Session; onLogou
       <main className="portal-main advisor-main">
         <div className="page-intro advisor-intro">
           <div>
-            <p className="eyebrow">Advisor workspace</p>
-            <h1>{view === 'schedule' ? 'Consultation schedule' : 'Set your availability'}</h1>
+            <p className="eyebrow">{t('Advisor workspace')}</p>
+            <h1>{view === 'schedule' ? t('Consultation schedule') : t('Set your availability')}</h1>
             <p>
               {view === 'schedule'
-                ? 'Review assigned consultations and document each conversation.'
-                : 'Register the date and time ranges when you can consult.'}
+                ? t('Review assigned consultations and document each conversation.')
+                : t('Register the date and time ranges when you can consult.')}
             </p>
           </div>
           {view === 'schedule' && (
             <div className="advisor-metrics">
               <div>
                 <strong>{upcoming}</strong>
-                <span>Upcoming</span>
+                <span>{t('Upcoming')}</span>
               </div>
               <div>
                 <strong>{drafts}</strong>
-                <span>Drafts</span>
+                <span>{t('Drafts')}</span>
               </div>
               <div>
                 <strong>{profile?.testTypes.length ?? 0}</strong>
-                <span>Test types</span>
+                <span>{t('Test types')}</span>
               </div>
             </div>
           )}
         </div>
         {profile && (
-          <div className="advisor-specialties" aria-label="Supported test types">
-            <span>Consulting specialties</span>
+          <div className="advisor-specialties" aria-label={t('Supported test types')}>
+            <span>{t('Consulting specialties')}</span>
             {profile.testTypes.map(({ testType }) => (
-              <strong key={testType.id}>{testType.name}</strong>
+              <strong key={testType.id}>{t(testType.name)}</strong>
             ))}
           </div>
         )}
@@ -671,7 +672,7 @@ export function AdvisorPortal({ session, onLogout }: { session: Session; onLogou
         )}
         {loading ? (
           <div className="page-loading" role="status">
-            <span className="spinner" /> Loading advisor workspace…
+            <span className="spinner" /> {t('Loading advisor workspace…')}
           </div>
         ) : view === 'schedule' ? (
           <ScheduleView
@@ -691,8 +692,8 @@ export function AdvisorPortal({ session, onLogout }: { session: Session; onLogou
         )}
       </main>
       <footer>
-        <span>Alostar advisor services</span>
-        <span>Business timezone: Asia/Seoul</span>
+        <span>{t('Alostar advisor services')}</span>
+        <span>{t('Business timezone: Asia/Seoul')}</span>
       </footer>
     </div>
   );
