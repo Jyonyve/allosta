@@ -258,6 +258,33 @@ const ko: Record<string, string> = {
   Program: '프로그램',
   '{count} consultation marked as no-show.': '{count}건의 상담을 노쇼로 처리했습니다.',
   '{count} consultations marked as no-show.': '{count}건의 상담을 노쇼로 처리했습니다.',
+  'Not attended': '미참석',
+  'Change reservation': '예약 변경',
+  'Want to change reservation?': '예약을 변경하시겠습니까?',
+  'Book a new time': '새 시간 예약',
+  'Keep current': '기존 예약 유지',
+  'Changing…': '변경 중…',
+  'Previous time missed': '이전 예약 미참석',
+  'Your consultation on {old} was not attended. Book {new} instead?':
+    '{old} 상담이 미참석이었습니다. {new}으로 새로 예약하시겠습니까?',
+  'You already have a consultation on {old}. Change it to {new}?':
+    '{old}에 이미 상담이 있습니다. {new}으로 변경하시겠습니까?',
+  'Your consultation was changed to the new time.': '상담이 새 시간으로 변경되었습니다.',
+  'A consultation record for this result is already in progress and cannot be replaced.':
+    '이미 작성 중인 상담 기록이 있어 예약을 변경할 수 없습니다.',
+  'A consultation for this result is already in progress.':
+    '이 검사 결과에 대한 상담이 이미 진행 중입니다.',
+  'Your reservation on {date} was not attended. You can book a new time.':
+    '{date} 예약이 미참석이었습니다. 새로운 시간을 예약할 수 있습니다.',
+  'You already have a reservation for this result on {date}. Choose a new time to change it.':
+    '이 검사 결과에 대해 {date} 예약이 이미 있습니다. 시간을 변경하려면 새 시간을 선택하세요.',
+  'Run attendance check': '출석 확인 실행',
+  'Mark overdue reserved consultations that were never documented as not attended. This operation is safe to run more than once.':
+    '기한이 지난 예약 중 문서화되지 않은 상담을 미참석으로 처리합니다. 여러 번 실행해도 안전합니다.',
+  '{count} consultation marked as not attended.': '{count}건의 상담을 미참석으로 처리했습니다.',
+  '{count} consultations marked as not attended.': '{count}건의 상담을 미참석으로 처리했습니다.',
+  'No overdue consultations found.': '기한이 지난 상담이 없습니다.',
+  'None selected': '선택된 상품 없음',
 };
 
 type I18nValue = string | number;

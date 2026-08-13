@@ -181,14 +181,63 @@ function ResultCard({ result, selected, onSelect }: { result: TestResult; select
   );
 }
 
+function ChangeReservationModal({
+  existing,
+  newSlot,
+  busy,
+  onCancel,
+  onConfirm,
+}: {
+  existing: Consultation;
+  newSlot: string;
+  busy: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const { t, formatDate } = useI18n();
+  const [now] = useState(() => Date.now());
+  const past = new Date(existing.scheduledStartAt).getTime() < now;
+  const dateTime = (value: string) =>
+    formatDate(value, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  return (
+    <div className="modal-backdrop" onMouseDown={onCancel}>
+      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="change-reservation-title">
+        <p className="eyebrow">{past ? t('Previous time missed') : t('Change reservation')}</p>
+        <h2 id="change-reservation-title">{past ? t('Book a new time') : t('Want to change reservation?')}</h2>
+        <p>
+          {past
+            ? t('Your consultation on {old} was not attended. Book {new} instead?', {
+                old: dateTime(existing.scheduledStartAt),
+                new: dateTime(newSlot),
+              })
+            : t('You already have a consultation on {old}. Change it to {new}?', {
+                old: dateTime(existing.scheduledStartAt),
+                new: dateTime(newSlot),
+              })}
+        </p>
+        <div className="modal-actions">
+          <button className="button button--secondary" type="button" onClick={onCancel} disabled={busy}>
+            {t('Keep current')}
+          </button>
+          <button className="button button--primary" type="button" onClick={onConfirm} disabled={busy}>
+            {busy ? t('Changing…') : past ? t('Book new time') : t('Change reservation')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function BookingView({
   token,
   results,
+  consultations,
   onReserved,
   onUnauthorized,
 }: {
   token: string;
   results: TestResult[];
+  consultations: Consultation[];
   onReserved: () => Promise<void>;
   onUnauthorized: () => void;
 }) {
@@ -199,9 +248,15 @@ function BookingView({
   const [selectedSlot, setSelectedSlot] = useState('');
   const [loadingSlots, setLoadingSlots] = useState(true);
   const [booking, setBooking] = useState(false);
+  const [showChangeModal, setShowChangeModal] = useState(false);
   const [notice, setNotice] = useState<{ kind: 'error' | 'success'; text: string } | null>(null);
+  const [now] = useState(() => Date.now());
 
   const selectedResult = results.find((result) => result.id === selectedId);
+  const existingActive = consultations.find(
+    (item) => item.testResult.id === selectedId && (item.status === 'RESERVED' || item.status === 'DOCUMENTING'),
+  );
+  const existingPast = existingActive ? new Date(existingActive.scheduledStartAt).getTime() < now : false;
   const groupedSlots = useMemo(() => {
     const groups = new Map<string, string[]>();
     for (const slot of slots) {
@@ -241,15 +296,21 @@ function BookingView({
     setSelectedId(id);
   }
 
-  async function reserve() {
+  async function doReserve(replaceExisting: boolean) {
     if (!selectedResult || !selectedSlot) return;
     setBooking(true);
     setNotice(null);
     try {
-      await api.reserve(token, selectedResult.id, selectedSlot);
+      await api.reserve(token, selectedResult.id, selectedSlot, replaceExisting);
       setSlots((current) => current.filter((slot) => slot !== selectedSlot));
       setSelectedSlot('');
-      setNotice({ kind: 'success', text: t('Your consultation is reserved. You can review it in My consultations.') });
+      setShowChangeModal(false);
+      setNotice({
+        kind: 'success',
+        text: replaceExisting
+          ? t('Your consultation was changed to the new time.')
+          : t('Your consultation is reserved. You can review it in My consultations.'),
+      });
       await onReserved();
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) onUnauthorized();
@@ -257,6 +318,22 @@ function BookingView({
     } finally {
       setBooking(false);
     }
+  }
+
+  function handleReserve() {
+    if (!selectedResult || !selectedSlot) return;
+    if (existingActive) {
+      if (existingActive.status === 'DOCUMENTING') {
+        setNotice({
+          kind: 'error',
+          text: t('A consultation record for this result is already in progress and cannot be replaced.'),
+        });
+        return;
+      }
+      setShowChangeModal(true);
+      return;
+    }
+    doReserve(false);
   }
 
   if (!results.length) {
@@ -294,6 +371,37 @@ function BookingView({
             <span>{t('Result note')}</span>
             <p>{selectedResult.summary}</p>
           </div>
+        )}
+        {existingActive && (
+          <p className="notice notice--info" role="status">
+            {existingActive.status === 'DOCUMENTING'
+              ? t('A consultation for this result is already in progress.')
+              : existingPast
+                ? t(
+                    'Your reservation on {date} was not attended. You can book a new time.',
+                    {
+                      date: formatDate(existingActive.scheduledStartAt, {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      }),
+                    },
+                  )
+                : t(
+                    'You already have a reservation for this result on {date}. Choose a new time to change it.',
+                    {
+                      date: formatDate(existingActive.scheduledStartAt, {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      }),
+                    },
+                  )}
+          </p>
         )}
       </section>
 
@@ -366,7 +474,7 @@ function BookingView({
                 className="button button--primary"
                 type="button"
                 disabled={!selectedSlot || booking}
-                onClick={reserve}
+                onClick={handleReserve}
               >
                 {booking ? t('Reserving…') : t('Reserve consultation')}
               </button>
@@ -385,6 +493,15 @@ function BookingView({
           </p>
         )}
       </section>
+      {showChangeModal && existingActive && selectedSlot && (
+        <ChangeReservationModal
+          existing={existingActive}
+          newSlot={selectedSlot}
+          busy={booking}
+          onCancel={() => setShowChangeModal(false)}
+          onConfirm={() => doReserve(true)}
+        />
+      )}
     </div>
   );
 }
@@ -394,6 +511,7 @@ const statusLabels: Record<Consultation['status'], string> = {
   DOCUMENTING: 'In progress',
   COMPLETED: 'Completed',
   NO_SHOW: 'No show',
+  NOT_ATTENDED: 'Not attended',
   CANCELLED: 'Cancelled',
 };
 
@@ -642,6 +760,7 @@ function CustomerPortal({ session, onLogout }: { session: Session; onLogout: () 
           <BookingView
             token={session.accessToken}
             results={results}
+            consultations={consultations}
             onReserved={loadConsultations}
             onUnauthorized={handleUnauthorized}
           />

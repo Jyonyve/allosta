@@ -27,6 +27,7 @@ enum ConsultationStatus {
   DOCUMENTING
   COMPLETED
   NO_SHOW
+  NOT_ATTENDED
   CANCELLED
 }
 

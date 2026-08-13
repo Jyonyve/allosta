@@ -10,6 +10,7 @@ const statusLabels: Record<string, string> = {
   DOCUMENTING: 'Documenting',
   COMPLETED: 'Completed',
   NO_SHOW: 'No-show',
+  NOT_ATTENDED: 'Not attended',
   CANCELLED: 'Cancelled',
 };
 
@@ -38,7 +39,7 @@ function DashboardView({
 }) {
   const { t } = useI18n();
   const total = totalCounts(data.counts);
-  const statuses = ['RESERVED', 'DOCUMENTING', 'COMPLETED', 'NO_SHOW', 'CANCELLED'] as const;
+  const statuses = ['RESERVED', 'DOCUMENTING', 'COMPLETED', 'NO_SHOW', 'NOT_ATTENDED', 'CANCELLED'] as const;
 
   return (
     <>
@@ -93,9 +94,9 @@ function DashboardView({
         <section className="operator-card batch-card" aria-labelledby="batch-title">
           <p className="eyebrow">{t('Daily control')}</p>
           <h2 id="batch-title">{t('No-show processing')}</h2>
-          <p>{t('Mark overdue reserved consultations as no-shows. This operation is safe to run more than once.')}</p>
+          <p>{t('Mark overdue reserved consultations that were never documented as not attended. This operation is safe to run more than once.')}</p>
           <button className="button button--secondary" onClick={onRunBatch} disabled={runningBatch}>
-            {runningBatch ? t('Processing…') : t('Run no-show check')}
+            {runningBatch ? t('Processing…') : t('Run attendance check')}
           </button>
           {batchNotice && (
             <p className="operator-batch-notice" role="status">
@@ -252,10 +253,17 @@ function ConsultationDetail({ consultation }: { consultation: OperatorConsultati
         {consultation.record ? (
           <>
             <p>{consultation.record.summary || t('No summary entered.')}</p>
-            <div className="record-products">
-              {consultation.record.interestedProducts.map(({ product }) => (
-                <span key={product.id}>{t(product.name)}</span>
-              ))}
+            <div className="record-interest">
+              <h4>{t('Interested products')}</h4>
+              {consultation.record.interestedProducts.length ? (
+                <div className="record-products">
+                  {consultation.record.interestedProducts.map(({ product }) => (
+                    <span key={product.id}>{t(product.name)}</span>
+                  ))}
+                </div>
+              ) : (
+                <p className="muted">{t('None selected')}</p>
+              )}
             </div>
           </>
         ) : (
@@ -461,11 +469,26 @@ export function OperatorPortal({ session, onLogout }: { session: Session; onLogo
     setBatchNotice('');
     try {
       const result = await api.runNoShowBatch(session.accessToken);
-      setBatchNotice(
-        t(result.count === 1 ? '{count} consultation marked as no-show.' : '{count} consultations marked as no-show.', {
-          count: result.count,
-        }),
-      );
+      const parts: string[] = [];
+      if (result.noShows > 0)
+        parts.push(
+          t(
+            result.noShows === 1
+              ? '{count} consultation marked as no-show.'
+              : '{count} consultations marked as no-show.',
+            { count: result.noShows },
+          ),
+        );
+      if (result.notAttended > 0)
+        parts.push(
+          t(
+            result.notAttended === 1
+              ? '{count} consultation marked as not attended.'
+              : '{count} consultations marked as not attended.',
+            { count: result.notAttended },
+          ),
+        );
+      setBatchNotice(parts.length ? parts.join(' ') : t('No overdue consultations found.'));
       await load();
     } catch (nextError) {
       setBatchNotice(messageFor(nextError, t));

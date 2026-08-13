@@ -252,6 +252,7 @@ const advisorStatus: Record<AdvisorConsultation['status'], string> = {
   DOCUMENTING: 'Draft started',
   COMPLETED: 'Completed',
   NO_SHOW: 'No show',
+  NOT_ATTENDED: 'Not attended',
   CANCELLED: 'Cancelled',
 };
 

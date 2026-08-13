@@ -26,7 +26,13 @@ export type TestResult = {
   examinee: { id: string; name: string; userId: string | null };
 };
 
-export type ConsultationStatus = 'RESERVED' | 'DOCUMENTING' | 'COMPLETED' | 'NO_SHOW' | 'CANCELLED';
+export type ConsultationStatus =
+  | 'RESERVED'
+  | 'DOCUMENTING'
+  | 'COMPLETED'
+  | 'NO_SHOW'
+  | 'NOT_ATTENDED'
+  | 'CANCELLED';
 
 export type Consultation = {
   id: string;
@@ -192,11 +198,11 @@ export const api = {
     const query = new URLSearchParams({ testResultId });
     return request<string[]>(`/consultations/available-slots?${query}`, { token });
   },
-  reserve(token: string, testResultId: string, scheduledStartAt: string) {
+  reserve(token: string, testResultId: string, scheduledStartAt: string, replaceExisting = false) {
     return request<Consultation>('/consultations', {
       method: 'POST',
       token,
-      body: { testResultId, scheduledStartAt },
+      body: { testResultId, scheduledStartAt, replaceExisting },
     });
   },
   consultations(token: string) {
@@ -275,6 +281,9 @@ export const api = {
     });
   },
   runNoShowBatch(token: string) {
-    return request<{ count: number }>('/operator/batch/no-shows', { method: 'POST', token });
+    return request<{ count: number; noShows: number; notAttended: number }>('/operator/batch/no-shows', {
+      method: 'POST',
+      token,
+    });
   },
 };

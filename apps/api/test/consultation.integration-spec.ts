@@ -614,7 +614,80 @@ describe('consultation PostgreSQL integration', () => {
       `SELECT status FROM consultations WHERE id = $1`,
       [ids.consultation3],
     );
-    expect(noShow.rows[0].status).toBe('NO_SHOW');
+    expect(noShow.rows[0].status).toBe('NOT_ATTENDED');
+  });
+
+  it('rejects a second reservation unless replaceExisting is requested', async () => {
+    const { slot } = await seedFixture();
+    const token = await login(app, 'customer1@integration.local');
+    const auth = { Authorization: `Bearer ${token}` };
+
+    const first = await request(app.getHttpServer())
+      .post('/consultations')
+      .set(auth)
+      .send({ testResultId: ids.result1, scheduledStartAt: slot.toISOString() })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post('/consultations')
+      .set(auth)
+      .send({
+        testResultId: ids.result1,
+        scheduledStartAt: new Date(slot.getTime() + 1_800_000).toISOString(),
+      })
+      .expect(409);
+
+    const second = await request(app.getHttpServer())
+      .post('/consultations')
+      .set(auth)
+      .send({
+        testResultId: ids.result1,
+        scheduledStartAt: new Date(slot.getTime() + 1_800_000).toISOString(),
+        replaceExisting: true,
+      })
+      .expect(201);
+
+    expect(second.body.id).not.toBe(first.body.id);
+    const rows = await pool.query(
+      `SELECT status FROM consultations WHERE test_result_id = $1 ORDER BY scheduled_start_at`,
+      [ids.result1],
+    );
+    expect(rows.rows.map((r) => r.status)).toEqual(['CANCELLED', 'RESERVED']);
+  });
+
+  it('turns an overdue undocumented reservation into NOT_ATTENDED on rebooking', async () => {
+    const { slot } = await seedFixture();
+    const token = await login(app, 'customer1@integration.local');
+    const auth = { Authorization: `Bearer ${token}` };
+
+    const past = new Date(Date.now() - 3_600_000);
+    past.setUTCMinutes(0, 0, 0);
+    await insertConsultation({
+      id: ids.consultation3,
+      requesterId: ids.customer,
+      resultId: ids.result1,
+      advisorId: ids.advisor1,
+      start: past,
+    });
+
+    await request(app.getHttpServer())
+      .post('/consultations')
+      .set(auth)
+      .send({
+        testResultId: ids.result1,
+        scheduledStartAt: slot.toISOString(),
+        replaceExisting: true,
+      })
+      .expect(201);
+
+    const rows = await pool.query(
+      `SELECT status FROM consultations WHERE test_result_id = $1 ORDER BY scheduled_start_at`,
+      [ids.result1],
+    );
+    expect(rows.rows.map((r) => r.status)).toEqual([
+      'NOT_ATTENDED',
+      'RESERVED',
+    ]);
   });
 
   it('persists DRAFT then atomically finalizes the record and consultation', async () => {

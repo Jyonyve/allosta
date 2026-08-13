@@ -43,6 +43,7 @@ const ACTIVE: ConsultationStatus[] = [
 class ReserveDto {
   @IsUUID() testResultId!: string;
   @IsDateString() scheduledStartAt!: string;
+  @IsOptional() @IsBoolean() replaceExisting?: boolean;
 }
 class CancelDto {
   @IsOptional() @IsString() reason?: string;
@@ -228,8 +229,9 @@ class ReserveConsultationHandler implements ICommandHandler<ReserveConsultation>
   constructor(private readonly prisma: PrismaService) {}
   async execute({ userId, dto }: ReserveConsultation) {
     const start = new Date(dto.scheduledStartAt),
+      now = new Date(),
       p = await policy(this.prisma);
-    validateWindow(start, new Date(), p);
+    validateWindow(start, now, p);
     const { result, delegationId } = await access(
       this.prisma,
       userId,
@@ -242,6 +244,41 @@ class ReserveConsultationHandler implements ICommandHandler<ReserveConsultation>
     try {
       return await this.prisma.$transaction(
         async (tx) => {
+          const existing = await tx.consultation.findFirst({
+            where: {
+              testResultId: result.id,
+              requesterUserId: userId,
+              status: { in: ACTIVE },
+            },
+            select: { id: true, status: true, scheduledStartAt: true },
+            orderBy: { scheduledStartAt: 'desc' },
+          });
+          if (existing) {
+            if (!dto.replaceExisting)
+              throw new ConflictException(
+                'You already have an active consultation for this test result',
+              );
+            if (existing.status === ConsultationStatus.DOCUMENTING)
+              throw new ConflictException(
+                'A consultation record is already in progress and cannot be replaced',
+              );
+            if (existing.scheduledStartAt.getTime() <= now.getTime()) {
+              await tx.consultation.update({
+                where: { id: existing.id },
+                data: { status: 'NOT_ATTENDED' },
+              });
+            } else {
+              await tx.consultation.update({
+                where: { id: existing.id },
+                data: {
+                  status: 'CANCELLED',
+                  cancelledAt: now,
+                  cancelledByUserId: userId,
+                  cancellationReason: 'Replaced by customer',
+                },
+              });
+            }
+          }
           const candidates = await tx.advisorProfile.findMany({
             where: {
               active: true,
