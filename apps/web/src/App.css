@@ -1058,7 +1058,8 @@ footer {
   font-weight: 700;
 }
 .record-editor textarea,
-.availability-form input {
+.availability-form input,
+.availability-form select {
   width: 100%;
   padding: 11px 12px;
   border: 1px solid #ced9d3;
@@ -1068,7 +1069,8 @@ footer {
   resize: vertical;
 }
 .record-editor textarea:focus,
-.availability-form input:focus {
+.availability-form input:focus,
+.availability-form select:focus {
   border-color: var(--green);
   outline: 0;
   box-shadow: 0 0 0 3px rgba(23, 107, 91, 0.08);
@@ -1198,8 +1200,13 @@ footer {
   gap: 16px;
   margin-top: 23px;
 }
-.availability-form input {
+.availability-form input,
+.availability-form select {
   min-height: 44px;
+}
+.delegation-actions {
+  display: flex;
+  gap: 8px;
 }
 .time-input-row {
   display: grid;
@@ -1919,6 +1926,10 @@ footer {
     grid-column: 3;
     grid-row: 1 / span 2;
   }
+  .consent-list article .delegation-actions {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
 }
 
 @media (max-width: 600px) {
@@ -1944,6 +1955,15 @@ footer {
   .consent-list article .button {
     grid-row: auto;
     width: 100%;
+  }
+  .consent-list article .delegation-actions {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    width: 100%;
+  }
+  .consent-list article .delegation-actions .button {
+    flex: 1;
+    width: auto;
   }
 }
 

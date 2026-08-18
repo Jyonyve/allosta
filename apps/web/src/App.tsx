@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ApiError, api } from './api';
-import type { Consultation, Session, TestResult } from './api';
+import type { Consultation, MyDelegation, Session, TestResult } from './api';
 import { AdvisorPortal } from './AdvisorPortal';
 import { LanguageSwitcher, useI18n } from './i18n';
 import { OperatorPortal } from './OperatorPortal';
@@ -645,11 +645,192 @@ function ConsultationsView({
   );
 }
 
+function DelegationsView({
+  ownedResults,
+  pending,
+  loading,
+  onRequest,
+  onApprove,
+  onReject,
+}: {
+  ownedResults: TestResult[];
+  pending: MyDelegation[];
+  loading: boolean;
+  onRequest: (testResultId: string, delegateEmail: string) => Promise<void>;
+  onApprove: (id: string) => Promise<void>;
+  onReject: (id: string) => Promise<void>;
+}) {
+  const { t, formatDate } = useI18n();
+  const [selectedResultId, setSelectedResultId] = useState(ownedResults[0]?.id ?? '');
+  const [delegateEmail, setDelegateEmail] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [formNotice, setFormNotice] = useState<{ kind: 'error' | 'success'; text: string } | null>(null);
+  const [actingId, setActingId] = useState('');
+  const [listError, setListError] = useState('');
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!selectedResultId || !delegateEmail.trim()) return;
+    setSubmitting(true);
+    setFormNotice(null);
+    try {
+      await onRequest(selectedResultId, delegateEmail.trim());
+      setDelegateEmail('');
+      setFormNotice({
+        kind: 'success',
+        text: t('Delegation request created. Confirm it below to finish granting access.'),
+      });
+    } catch (error) {
+      setFormNotice({ kind: 'error', text: messageFor(error, t) });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function decide(id: string, approve: boolean) {
+    setActingId(id);
+    setListError('');
+    try {
+      await (approve ? onApprove(id) : onReject(id));
+    } catch (error) {
+      setListError(messageFor(error, t));
+    } finally {
+      setActingId('');
+    }
+  }
+
+  return (
+    <div className="booking-layout">
+      <section className="workspace-section" aria-labelledby="delegation-form-title">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">{t('Delegate access')}</p>
+            <h2 id="delegation-form-title">{t('Grant consultation access')}</h2>
+          </div>
+        </div>
+        <p className="muted">
+          {t(
+            'Choose a result you own and the Alostar account email of the person who should be able to consult about it — a family member, for example.',
+          )}
+        </p>
+        {ownedResults.length ? (
+          <form className="availability-form delegation-form" onSubmit={submit}>
+            <label>
+              {t('Test result')}
+              <select value={selectedResultId} onChange={(event) => setSelectedResultId(event.target.value)} required>
+                {ownedResults.map((result) => (
+                  <option key={result.id} value={result.id}>
+                    {t(result.testType.name)} ·{' '}
+                    {formatDate(result.testedAt, { year: 'numeric', month: 'long', day: 'numeric' })}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              {t('Delegate email address')}
+              <input
+                type="email"
+                value={delegateEmail}
+                onChange={(event) => setDelegateEmail(event.target.value)}
+                placeholder="family@example.com"
+                required
+              />
+            </label>
+            {formNotice && (
+              <p className={`notice notice--${formNotice.kind}`} role="status">
+                {formNotice.text}
+              </p>
+            )}
+            <div className="form-actions">
+              <button className="button button--primary" disabled={submitting}>
+                {submitting ? t('Sending…') : t('Send delegation request')}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <p className="notice notice--info">{t('You have no test results to delegate yet.')}</p>
+        )}
+      </section>
+
+      <section className="workspace-section consent-queue" aria-labelledby="delegation-pending-title">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">{t('Access governance')}</p>
+            <h2 id="delegation-pending-title">{t('Awaiting your confirmation')}</h2>
+          </div>
+          <strong className="consent-summary">{t('{count} pending', { count: pending.length })}</strong>
+        </div>
+        <div className="legal-note">
+          <span aria-hidden="true">!</span>
+          <p>{t('Confirming grants the delegate access to this result and lets them book a consultation about it.')}</p>
+        </div>
+        {listError && (
+          <p className="notice notice--error" role="alert">
+            {listError}
+          </p>
+        )}
+        {loading ? (
+          <div className="page-loading" role="status">
+            <span className="spinner" /> {t('Loading consultations…')}
+          </div>
+        ) : (
+          <div className="consent-list">
+            {pending.map((item) => (
+              <article key={item.id}>
+                <span className="consent-avatar" aria-hidden="true">
+                  {item.delegate.name.charAt(0)}
+                </span>
+                <div>
+                  <strong>{item.delegate.name}</strong>
+                  <small>{item.delegate.email}</small>
+                </div>
+                <div>
+                  <span>{t('Requests access to')}</span>
+                  <strong>{t(item.testResult.testType.name)}</strong>
+                  <small>
+                    {t('Submitted {date}', {
+                      date: formatDate(item.createdAt, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }),
+                    })}
+                  </small>
+                </div>
+                <div className="delegation-actions">
+                  <button
+                    type="button"
+                    className="button button--secondary"
+                    disabled={actingId === item.id}
+                    onClick={() => decide(item.id, false)}
+                  >
+                    {actingId === item.id ? t('Rejecting…') : t('Reject access')}
+                  </button>
+                  <button
+                    type="button"
+                    className="button button--primary"
+                    disabled={actingId === item.id}
+                    onClick={() => decide(item.id, true)}
+                  >
+                    {actingId === item.id ? t('Approving…') : t('Approve access')}
+                  </button>
+                </div>
+              </article>
+            ))}
+            {!pending.length && (
+              <div className="operator-empty-copy">
+                <p>{t('No delegation requests are awaiting confirmation.')}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
 function CustomerPortal({ session, onLogout }: { session: Session; onLogout: () => void }) {
   const { t } = useI18n();
-  const [view, setView] = useState<'book' | 'consultations'>('book');
+  const [view, setView] = useState<'book' | 'consultations' | 'delegations'>('book');
   const [results, setResults] = useState<TestResult[]>([]);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
+  const [delegations, setDelegations] = useState<MyDelegation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -663,13 +844,23 @@ function CustomerPortal({ session, onLogout }: { session: Session; onLogout: () 
     setConsultations(next);
   }, [session.accessToken]);
 
+  const loadDelegations = useCallback(async () => {
+    const next = await api.myPendingDelegations(session.accessToken);
+    setDelegations(next);
+  }, [session.accessToken]);
+
   useEffect(() => {
     let active = true;
-    Promise.all([api.testResults(session.accessToken), api.consultations(session.accessToken)])
-      .then(([nextResults, nextConsultations]) => {
+    Promise.all([
+      api.testResults(session.accessToken),
+      api.consultations(session.accessToken),
+      api.myPendingDelegations(session.accessToken),
+    ])
+      .then(([nextResults, nextConsultations, nextDelegations]) => {
         if (!active) return;
         setResults(nextResults);
         setConsultations(nextConsultations);
+        setDelegations(nextDelegations);
       })
       .catch((nextError: unknown) => {
         if (!active) return;
@@ -692,6 +883,29 @@ function CustomerPortal({ session, onLogout }: { session: Session; onLogout: () 
     }
   }
 
+  async function requestDelegation(testResultId: string, delegateEmail: string) {
+    try {
+      await api.requestDelegation(session.accessToken, testResultId, delegateEmail);
+      await loadDelegations();
+    } catch (nextError) {
+      if (nextError instanceof ApiError && nextError.status === 401) handleUnauthorized();
+      throw nextError;
+    }
+  }
+
+  async function decideDelegation(id: string, approve: boolean) {
+    try {
+      if (approve) await api.approveDelegation(session.accessToken, id);
+      else await api.rejectDelegation(session.accessToken, id);
+      await loadDelegations();
+    } catch (nextError) {
+      if (nextError instanceof ApiError && nextError.status === 401) handleUnauthorized();
+      throw nextError;
+    }
+  }
+
+  const ownedResults = results.filter((result) => result.examinee.userId === session.user.id);
+
   return (
     <div className="portal-shell">
       <header className="portal-header">
@@ -707,6 +921,9 @@ function CustomerPortal({ session, onLogout }: { session: Session; onLogout: () 
           </button>
           <button className={view === 'consultations' ? 'active' : ''} onClick={() => setView('consultations')}>
             {t('My consultations')}
+          </button>
+          <button className={view === 'delegations' ? 'active' : ''} onClick={() => setView('delegations')}>
+            {t('Family access')}
           </button>
         </nav>
         <div className="account-menu">
@@ -728,11 +945,19 @@ function CustomerPortal({ session, onLogout }: { session: Session; onLogout: () 
         <div className="page-intro">
           <div>
             <p className="eyebrow">{t('Good to see you, {name}', { name: session.user.name.split(' ')[0] })}</p>
-            <h1>{view === 'book' ? t('Book a consultation') : t('Your consultation history')}</h1>
+            <h1>
+              {view === 'book'
+                ? t('Book a consultation')
+                : view === 'consultations'
+                  ? t('Your consultation history')
+                  : t('Manage family access')}
+            </h1>
             <p>
               {view === 'book'
                 ? t('Choose a result and a time. We’ll assign the right available advisor.')
-                : t('Review upcoming appointments and completed conversations.')}
+                : view === 'consultations'
+                  ? t('Review upcoming appointments and completed conversations.')
+                  : t('Grant or confirm access so someone else can consult about a result you own.')}
             </p>
           </div>
           {view === 'book' && (
@@ -764,8 +989,17 @@ function CustomerPortal({ session, onLogout }: { session: Session; onLogout: () 
             onReserved={loadConsultations}
             onUnauthorized={handleUnauthorized}
           />
-        ) : (
+        ) : view === 'consultations' ? (
           <ConsultationsView consultations={consultations} loading={false} onCancel={cancelConsultation} />
+        ) : (
+          <DelegationsView
+            ownedResults={ownedResults}
+            pending={delegations}
+            loading={false}
+            onRequest={requestDelegation}
+            onApprove={(id) => decideDelegation(id, true)}
+            onReject={(id) => decideDelegation(id, false)}
+          />
         )}
       </main>
 

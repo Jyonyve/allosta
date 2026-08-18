@@ -146,6 +146,19 @@ export type PendingDelegation = {
   };
 };
 
+export type MyDelegation = {
+  id: string;
+  status: 'PENDING';
+  createdAt: string;
+  delegate: { id: string; name: string; email: string };
+  testResult: {
+    id: string;
+    testedAt: string;
+    summary: string | null;
+    testType: { id: string; code: string; name: string };
+  };
+};
+
 export class ApiError extends Error {
   readonly status: number;
 
@@ -278,6 +291,28 @@ export const api = {
       method: 'PATCH',
       token,
       body: { note: 'Verified through external lawful process' },
+    });
+  },
+  requestDelegation(token: string, testResultId: string, delegateEmail: string) {
+    return request<{ id: string; status: string }>('/delegations', {
+      method: 'POST',
+      token,
+      body: { testResultId, delegateEmail },
+    });
+  },
+  myPendingDelegations(token: string) {
+    return request<MyDelegation[]>('/delegations/pending-consent', { token });
+  },
+  approveDelegation(token: string, id: string) {
+    return request<{ id: string; status: string }>(`/delegations/${id}/approve`, {
+      method: 'PATCH',
+      token,
+    });
+  },
+  rejectDelegation(token: string, id: string) {
+    return request<{ id: string; status: string }>(`/delegations/${id}/reject`, {
+      method: 'PATCH',
+      token,
     });
   },
   runNoShowBatch(token: string) {

@@ -285,6 +285,29 @@ const ko: Record<string, string> = {
   '{count} consultations marked as not attended.': '{count}건의 상담을 미참석으로 처리했습니다.',
   'No overdue consultations found.': '기한이 지난 상담이 없습니다.',
   'None selected': '선택된 상품 없음',
+  'Family access': '가족 상담',
+  'Manage family access': '가족 상담 위임 관리',
+  'Grant or confirm access so someone else can consult about a result you own.':
+    '본인 명의의 결과에 대해 다른 분이 상담받을 수 있도록 권한을 부여하거나 확인하세요.',
+  'Delegate access': '위임 권한 부여',
+  'Grant consultation access': '상담 위임 권한 부여',
+  'Choose a result you own and the Alostar account email of the person who should be able to consult about it — a family member, for example.':
+    '본인 명의의 검사 결과와, 대신 상담받을 분(가족 등)의 알로스타 계정 이메일을 입력하세요.',
+  'You have no test results to delegate yet.': '위임할 수 있는 본인 명의의 검사 결과가 없습니다.',
+  'Test result': '검사 결과',
+  'Delegate email address': '위임받을 사람의 이메일',
+  'Sending…': '보내는 중…',
+  'Send delegation request': '위임 요청 보내기',
+  'Delegation request created. Confirm it below to finish granting access.':
+    '위임 요청이 생성되었습니다. 아래에서 최종 동의를 확인하면 위임이 완료됩니다.',
+  'Awaiting your confirmation': '동의 확인 대기 중',
+  'Confirming grants the delegate access to this result and lets them book a consultation about it.':
+    '확인하면 위임받은 분이 이 결과에 접근하여 상담을 예약할 수 있습니다.',
+  'Approve access': '위임 승인',
+  'Approving…': '승인 중…',
+  'Reject access': '위임 거절',
+  'Rejecting…': '거절 중…',
+  'No delegation requests are awaiting confirmation.': '확인 대기 중인 위임 요청이 없습니다.',
 };
 
 type I18nValue = string | number;
