@@ -42,8 +42,8 @@ compose.test.yml         Disposable local PostgreSQL database
 ## Install
 
 ```powershell
-git clone https://github.com/Jyonyve/alostar.git
-cd alostar
+git clone https://github.com/Jyonyve/allosta.git
+cd allosta
 pnpm install --frozen-lockfile
 Copy-Item apps/api/.env.example apps/api/.env
 ```

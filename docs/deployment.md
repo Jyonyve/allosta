@@ -24,7 +24,7 @@ Two options:
 
 - **Blueprint (recommended):** push this repo, then in Render use
   **New → Blueprint** and select the repo. Render reads `render.yaml`, creates the
-  `alostar-api` web service, and prompts for the `sync: false` env vars:
+  `allosta` web service, and prompts for the `sync: false` env vars:
 
   | Variable        | Value                                         |
   | --------------- | --------------------------------------------- |
@@ -48,7 +48,7 @@ The service runs `prisma generate` + `build` during the deploy and
 
    | Name     | Value                                  |
    | -------- | -------------------------------------- |
-   | `API_URL`| `https://<your-api>.onrender.com`      |
+   | `API_URL`| `https://allosta.onrender.com`          |
 
    No trailing slash. This is baked into the bundle as `VITE_API_URL`.
 3. Push to `main` (or run the `Deploy web to GitHub Pages` workflow manually).
@@ -68,4 +68,4 @@ The action fails fast if `API_URL` is missing so a silent `/api` fallback never 
 ## Verify
 
 - Open the Pages URL, read the seeded accounts below, and log in.
-- Sweep `https://<your-api>.onrender.com/` for the API health response.
+- Sweep `https://allosta.onrender.com/` for the API health response.
