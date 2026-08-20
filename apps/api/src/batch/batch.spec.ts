@@ -2,7 +2,7 @@ import { NoShowService } from './batch.module.js';
 import { jest } from '@jest/globals';
 import type { PrismaService } from '../prisma/prisma.service.js';
 
-describe('previous-day attendance batch', () => {
+describe('overdue attendance batch', () => {
   it('marks undocumented overdue reservations as NOT_ATTENDED', async () => {
     const findMany = jest.fn().mockResolvedValue([
       { id: 'a', record: null },
@@ -13,15 +13,12 @@ describe('previous-day attendance batch', () => {
       consultation: { findMany, updateMany },
     } as unknown as PrismaService);
     const now = new Date('2026-08-10T15:10:00Z');
-    const result = await service.markPreviousDay(now);
+    const result = await service.markOverdue(now);
 
     expect(findMany).toHaveBeenCalledWith({
       where: {
         status: 'RESERVED',
-        scheduledStartAt: {
-          gte: new Date('2026-08-09T15:00:00Z'),
-          lt: new Date('2026-08-10T15:00:00Z'),
-        },
+        scheduledEndAt: { lte: now },
       },
       select: { id: true, record: { select: { id: true } } },
     });
@@ -41,7 +38,7 @@ describe('previous-day attendance batch', () => {
       consultation: { findMany, updateMany },
     } as unknown as PrismaService);
     const now = new Date('2026-08-10T15:10:00Z');
-    const result = await service.markPreviousDay(now);
+    const result = await service.markOverdue(now);
 
     expect(updateMany).toHaveBeenCalledWith({
       where: { id: { in: ['a'] } },

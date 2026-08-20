@@ -593,11 +593,13 @@ describe('consultation PostgreSQL integration', () => {
 
     const now = new Date();
     const kst = new Date(now.getTime() + 9 * 3_600_000);
-    const previousDayStart = new Date(
-      Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate()) -
-        9 * 3_600_000 -
-        86_400_000,
+    const dayStartKst = new Date(
+      Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate()),
     );
+    const previousDayStart = new Date(
+      dayStartKst.getTime() - 9 * 3_600_000 - 86_400_000,
+    );
+    const olderDayStart = new Date(previousDayStart.getTime() - 86_400_000);
     await insertConsultation({
       id: ids.consultation3,
       requesterId: ids.customer,
@@ -605,16 +607,27 @@ describe('consultation PostgreSQL integration', () => {
       advisorId: ids.advisor1,
       start: new Date(previousDayStart.getTime() + 3_600_000),
     });
+    const olderId = 'a0000000-0000-4000-8000-000000000030';
+    await insertConsultation({
+      id: olderId,
+      requesterId: ids.customer2,
+      resultId: ids.result3,
+      advisorId: ids.advisor2,
+      start: new Date(olderDayStart.getTime() + 3_600_000),
+    });
     await request(app.getHttpServer())
       .post('/operator/batch/no-shows')
       .set(auth)
       .expect(201)
-      .expect(({ body }) => expect(body.count).toBe(1));
+      .expect(({ body }) => expect(body.count).toBe(2));
     const noShow = await pool.query(
-      `SELECT status FROM consultations WHERE id = $1`,
-      [ids.consultation3],
+      `SELECT status FROM consultations WHERE id = ANY($1)`,
+      [[ids.consultation3, olderId]],
     );
-    expect(noShow.rows[0].status).toBe('NOT_ATTENDED');
+    expect(noShow.rows.map((r) => r.status)).toEqual([
+      'NOT_ATTENDED',
+      'NOT_ATTENDED',
+    ]);
   });
 
   it('rejects a second reservation unless replaceExisting is requested', async () => {

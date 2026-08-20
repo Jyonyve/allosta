@@ -8,15 +8,9 @@ import { PrismaService } from '../prisma/prisma.service.js';
 export class NoShowService {
   constructor(private readonly prisma: PrismaService) {}
   @Cron('0 10 0 * * *', { timeZone: 'Asia/Seoul' })
-  async markPreviousDay(now = new Date()) {
-    const kst = new Date(now.getTime() + 9 * 3600000),
-      y = kst.getUTCFullYear(),
-      m = kst.getUTCMonth(),
-      d = kst.getUTCDate();
-    const end = new Date(Date.UTC(y, m, d) - 9 * 3600000),
-      start = new Date(end.getTime() - 86400000);
+  async markOverdue(now = new Date()) {
     const candidates = await this.prisma.consultation.findMany({
-      where: { status: 'RESERVED', scheduledStartAt: { gte: start, lt: end } },
+      where: { status: 'RESERVED', scheduledEndAt: { lte: now } },
       select: { id: true, record: { select: { id: true } } },
     });
     const noShowIds = candidates.filter((c) => c.record).map((c) => c.id);
@@ -47,7 +41,7 @@ export class NoShowService {
 class BatchController {
   constructor(private readonly noShow: NoShowService) {}
   @Post('no-shows') run() {
-    return this.noShow.markPreviousDay();
+    return this.noShow.markOverdue();
   }
 }
 @Module({
