@@ -230,6 +230,9 @@ async function main() {
     m = tomorrowKst.getUTCMonth(),
     d = tomorrowKst.getUTCDate();
   const atKst = (hour: number) => new Date(Date.UTC(y, m, d, hour - 9));
+  await prisma.advisorAvailability.deleteMany({
+    where: { advisorId: { in: [ids.advisorProfile1, ids.advisorProfile2] } },
+  });
   for (const range of [
     {
       id: '90000000-0000-4000-8000-000000000001',
