@@ -611,7 +611,7 @@ describe('consultation PostgreSQL integration', () => {
     await insertConsultation({
       id: olderId,
       requesterId: ids.customer2,
-      resultId: ids.result3,
+      resultId: ids.result2,
       advisorId: ids.advisor2,
       start: new Date(olderDayStart.getTime() + 3_600_000),
     });
