@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: alostar-api
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: .
+    healthCheckPath: /
+    buildCommand: pnpm install --frozen-lockfile && pnpm --dir apps/api exec prisma generate && pnpm --dir apps/api build
+    startCommand: pnpm --dir apps/api exec prisma migrate deploy && { [ "${SEED_DEMO:-false}" = "true" ] && pnpm --dir apps/api seed; } && pnpm --dir apps/api start:prod
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: PORT
+        value: 10000
+      - key: SEED_DEMO
+        value: "true"
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false

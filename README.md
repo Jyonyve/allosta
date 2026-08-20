@@ -74,13 +74,14 @@ Open `http://localhost:5173`. Vite proxies `/api` to `http://localhost:3000`, so
 
 All seeded demo accounts use `DemoPass123!`:
 
-| Portal         | Email                 |
-| -------------- | --------------------- |
-| Customer       | `customer@demo.local` |
-| Proxy customer | `proxy@demo.local`    |
-| Advisor        | `advisor1@demo.local` |
-| Advisor        | `advisor2@demo.local` |
-| Operator       | `operator@demo.local` |
+| Portal         | Email                   |
+| -------------- | ----------------------- |
+| Customer       | `customer@demo.local`   |
+| Proxy customer | `proxy@demo.local`      |
+| Delegate       | `delegator@demo.local`  |
+| Advisor        | `advisor1@demo.local`   |
+| Advisor        | `advisor2@demo.local`   |
+| Operator       | `operator@demo.local`   |
 
 ## Verification
 
@@ -100,7 +101,7 @@ Stop and erase the disposable database with:
 pnpm db:test:down
 ```
 
-See [docs/local-test-database.md](docs/local-test-database.md) for database details, [apps/api/README.md](apps/api/README.md) for API configuration, and [apps/web/README.md](apps/web/README.md) for frontend configuration.
+See [docs/local-test-database.md](docs/local-test-database.md) for database details, [apps/api/README.md](apps/api/README.md) for API configuration, [apps/web/README.md](apps/web/README.md) for frontend configuration, and [docs/deployment.md](docs/deployment.md) for the GitHub Pages + Render + Neon deployment.
 
 ## Core domain decisions
 
