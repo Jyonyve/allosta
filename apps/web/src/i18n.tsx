@@ -285,8 +285,9 @@ const ko: Record<string, string> = {
   '{count} consultations marked as not attended.': '{count}건의 상담을 미참석으로 처리했습니다.',
   'No overdue consultations found.': '기한이 지난 상담이 없습니다.',
   'None selected': '선택된 상품 없음',
-  'Family access': '가족 상담',
-  'Manage family access': '가족 상담 위임 관리',
+  'Family access': '위임 상담',
+  'Manage family access': '위임 상담 관리',
+  Delegate: '위임자',
   'Grant or confirm access so someone else can consult about a result you own.':
     '본인 명의의 결과에 대해 다른 분이 상담받을 수 있도록 권한을 부여하거나 확인하세요.',
   'Delegate access': '위임 권한 부여',
@@ -308,6 +309,14 @@ const ko: Record<string, string> = {
   'Reject access': '위임 거절',
   'Rejecting…': '거절 중…',
   'No delegation requests are awaiting confirmation.': '확인 대기 중인 위임 요청이 없습니다.',
+  'Demo: use delegator@demo.local as the delegate account.':
+    '데모: 위임받는 계정으로 delegator@demo.local을 입력하세요.',
+  'Delegate customer not found': '위임받을 고객을 찾을 수 없습니다.',
+  'Owned test result not found': '본인 명의의 검사 결과를 찾을 수 없습니다.',
+  'Self-delegation is not allowed': '본인에게는 위임할 수 없습니다.',
+  'An active delegation already exists': '이미 활성화된 위임이 있습니다.',
+  'Pending delegation not found': '확인 대기 중인 위임 요청을 찾을 수 없습니다.',
+  'Only pending delegation can be verified': '대기 중인 위임만 확인할 수 있습니다.',
 };
 
 type I18nValue = string | number;

@@ -56,9 +56,15 @@ function Login({ onLogin }: { onLogin: (session: Session) => void }) {
     }
   }
 
-  function fillDemo(role: 'customer' | 'advisor' | 'operator') {
+  function fillDemo(role: 'customer' | 'advisor' | 'operator' | 'delegate') {
     setEmail(
-      role === 'customer' ? 'customer@demo.local' : role === 'advisor' ? 'advisor1@demo.local' : 'operator@demo.local',
+      role === 'customer'
+        ? 'customer@demo.local'
+        : role === 'advisor'
+          ? 'advisor1@demo.local'
+          : role === 'operator'
+            ? 'operator@demo.local'
+            : 'delegator@demo.local',
     );
     setPassword('DemoPass123!');
     setError('');
@@ -145,6 +151,9 @@ function Login({ onLogin }: { onLogin: (session: Session) => void }) {
               </button>
               <button type="button" className="text-button" onClick={() => fillDemo('operator')}>
                 {t('Operator')}
+              </button>
+              <button type="button" className="text-button" onClick={() => fillDemo('delegate')}>
+                {t('Delegate')}
               </button>
             </div>
           </div>
@@ -736,6 +745,9 @@ function DelegationsView({
                 required
               />
             </label>
+            <p className="muted delegation-hint">
+              {t('Demo: use delegator@demo.local as the delegate account.')}
+            </p>
             {formNotice && (
               <p className={`notice notice--${formNotice.kind}`} role="status">
                 {formNotice.text}

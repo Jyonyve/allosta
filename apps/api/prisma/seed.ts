@@ -21,6 +21,7 @@ const ids = {
   advisor1: '40000000-0000-4000-8000-000000000003',
   advisor2: '40000000-0000-4000-8000-000000000004',
   operator: '40000000-0000-4000-8000-000000000005',
+  delegator: '40000000-0000-4000-8000-000000000006',
   examinee: '50000000-0000-4000-8000-000000000001',
   proxyExaminee: '50000000-0000-4000-8000-000000000002',
   externalExaminee: '50000000-0000-4000-8000-000000000003',
@@ -98,32 +99,38 @@ async function main() {
     {
       id: ids.customer,
       email: 'customer@demo.local',
-      name: 'Self Customer',
+      name: '본인 고객',
       role: 'CUSTOMER' as const,
     },
     {
       id: ids.proxy,
       email: 'proxy@demo.local',
-      name: 'Proxy Customer',
+      name: '대리 고객',
       role: 'CUSTOMER' as const,
     },
     {
       id: ids.advisor1,
       email: 'advisor1@demo.local',
-      name: 'Advisor Kim',
+      name: '김상담사',
       role: 'ADVISOR' as const,
     },
     {
       id: ids.advisor2,
       email: 'advisor2@demo.local',
-      name: 'Advisor Lee',
+      name: '이상담사',
       role: 'ADVISOR' as const,
     },
     {
       id: ids.operator,
       email: 'operator@demo.local',
-      name: 'Operations User',
+      name: '운영자',
       role: 'OPERATOR' as const,
+    },
+    {
+      id: ids.delegator,
+      email: 'delegator@demo.local',
+      name: '위임받는 고객',
+      role: 'CUSTOMER' as const,
     },
   ];
   for (const user of users)
@@ -137,13 +144,13 @@ async function main() {
     {
       id: ids.examinee,
       userId: ids.customer,
-      name: 'Self Customer',
+      name: '본인 고객',
       birthDate: new Date('1990-05-12'),
     },
     {
       id: ids.proxyExaminee,
       userId: ids.proxy,
-      name: 'Proxy Customer',
+      name: '대리 고객',
       birthDate: new Date('1988-11-03'),
     },
   ])
@@ -154,10 +161,10 @@ async function main() {
     });
   await prisma.examinee.upsert({
     where: { id: ids.externalExaminee },
-    update: { name: 'External Examinee' },
+    update: { name: '외부 검사 대상자' },
     create: {
       id: ids.externalExaminee,
-      name: 'External Examinee',
+      name: '외부 검사 대상자',
       birthDate: new Date('1955-01-18'),
     },
   });
