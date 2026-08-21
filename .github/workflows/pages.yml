@@ -50,6 +50,7 @@ jobs:
       - name: Build web
         env:
           VITE_API_URL: ${{ vars.API_URL }}
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/
         run: pnpm --dir apps/web build
 
       - name: Upload Pages artifact
