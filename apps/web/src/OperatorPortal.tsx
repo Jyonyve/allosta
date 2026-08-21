@@ -469,26 +469,16 @@ export function OperatorPortal({ session, onLogout }: { session: Session; onLogo
     setBatchNotice('');
     try {
       const result = await api.runNoShowBatch(session.accessToken);
-      const parts: string[] = [];
-      if (result.noShows > 0)
-        parts.push(
-          t(
-            result.noShows === 1
-              ? '{count} consultation marked as no-show.'
-              : '{count} consultations marked as no-show.',
-            { count: result.noShows },
-          ),
-        );
-      if (result.notAttended > 0)
-        parts.push(
-          t(
-            result.notAttended === 1
-              ? '{count} consultation marked as not attended.'
-              : '{count} consultations marked as not attended.',
-            { count: result.notAttended },
-          ),
-        );
-      setBatchNotice(parts.length ? parts.join(' ') : t('No overdue consultations found.'));
+      setBatchNotice(
+        result.count > 0
+          ? t(
+              result.count === 1
+                ? '{count} consultation marked as not attended.'
+                : '{count} consultations marked as not attended.',
+              { count: result.count },
+            )
+          : t('No overdue consultations found.'),
+      );
       await load();
     } catch (nextError) {
       setBatchNotice(messageFor(nextError, t));

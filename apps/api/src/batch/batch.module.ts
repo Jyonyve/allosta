@@ -9,31 +9,16 @@ export class NoShowService {
   constructor(private readonly prisma: PrismaService) {}
   @Cron('0 10 0 * * *', { timeZone: 'Asia/Seoul' })
   async markOverdue(now = new Date()) {
-    const candidates = await this.prisma.consultation.findMany({
+    // RESERVED can never carry a record: saving the first draft moves a
+    // consultation to DOCUMENTING (see ConsultationsModule#writeRecord), so
+    // every overdue RESERVED consultation is undocumented by construction.
+    // Attendance can only be confirmed as NO_SHOW once a CTI integration
+    // reports it explicitly; this batch only settles the undocumented case.
+    const { count } = await this.prisma.consultation.updateMany({
       where: { status: 'RESERVED', scheduledEndAt: { lte: now } },
-      select: { id: true, record: { select: { id: true } } },
+      data: { status: 'NOT_ATTENDED' },
     });
-    const noShowIds = candidates.filter((c) => c.record).map((c) => c.id);
-    const notAttendedIds = candidates.filter((c) => !c.record).map((c) => c.id);
-    const [noShows, notAttended] = await Promise.all([
-      noShowIds.length
-        ? this.prisma.consultation.updateMany({
-            where: { id: { in: noShowIds } },
-            data: { status: 'NO_SHOW', noShowAt: now },
-          })
-        : Promise.resolve({ count: 0 }),
-      notAttendedIds.length
-        ? this.prisma.consultation.updateMany({
-            where: { id: { in: notAttendedIds } },
-            data: { status: 'NOT_ATTENDED' },
-          })
-        : Promise.resolve({ count: 0 }),
-    ]);
-    return {
-      count: noShows.count + notAttended.count,
-      noShows: noShows.count,
-      notAttended: notAttended.count,
-    };
+    return { count };
   }
 }
 @Controller('operator/batch')

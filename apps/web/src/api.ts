@@ -333,7 +333,7 @@ export const api = {
     });
   },
   runNoShowBatch(token: string) {
-    return request<{ count: number; noShows: number; notAttended: number }>('/operator/batch/no-shows', {
+    return request<{ count: number }>('/operator/batch/no-shows', {
       method: 'POST',
       token,
     });
