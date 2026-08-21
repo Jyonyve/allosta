@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: allosta
+    name: alostar-api
     runtime: node
     plan: free
     region: oregon
