@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 
 export type Language = 'ko' | 'en';
 
-const LANGUAGE_KEY = 'alostar.language';
+const LANGUAGE_KEY = 'allosta.language';
 
 const ko: Record<string, string> = {
   Korean: '한국어',
@@ -82,7 +82,7 @@ const ko: Record<string, string> = {
   'Advisor matched automatically': '상담사 자동 배정',
   'Based on your test type and availability': '검사 유형과 가능한 일정에 따라 배정됩니다',
   'Loading your health workspace…': '건강 상담 공간을 불러오는 중…',
-  'Alostar consultation services': 'Alostar 상담 서비스',
+  'Allosta consultation services': 'Allosta 상담 서비스',
   'Business timezone: Asia/Seoul': '서비스 기준 시간: 아시아/서울',
   'Advisor portal': '상담사 포털',
   Schedule: '상담 일정',
@@ -130,7 +130,7 @@ const ko: Record<string, string> = {
   'Test type': '검사 유형',
   'Test result note': '검사 결과 메모',
   'Loading advisor workspace…': '상담사 업무 공간을 불러오는 중…',
-  'Alostar advisor services': 'Alostar 상담사 서비스',
+  'Allosta advisor services': 'Allosta 상담사 서비스',
   'End time must be later than start time on the same date.': '종료 시간은 같은 날짜의 시작 시간보다 늦어야 합니다.',
   'This range overlaps availability you already registered.': '이미 등록한 상담 가능 시간과 겹칩니다.',
   'Availability updated.': '상담 가능 시간이 수정되었습니다.',
@@ -233,7 +233,7 @@ const ko: Record<string, string> = {
   'Queue clear': '대기열이 비어 있습니다',
   'There are no external consent requests awaiting verification.': '확인 대기 중인 외부 동의 요청이 없습니다.',
   'Loading operations workspace…': '운영 업무 공간을 불러오는 중…',
-  'Alostar operations center': 'Alostar 운영 센터',
+  'Allosta operations center': 'Allosta 운영 센터',
   'Consultation metrics': '상담 지표',
   Documenting: '작성 중',
   'Pending method': '확인 방법 대기 중',
@@ -292,7 +292,7 @@ const ko: Record<string, string> = {
     '본인 명의의 결과에 대해 다른 분이 상담받을 수 있도록 권한을 부여하거나 확인하세요.',
   'Delegate access': '위임 권한 부여',
   'Grant consultation access': '상담 위임 권한 부여',
-  'Choose a result you own and the Alostar account email of the person who should be able to consult about it — a family member, for example.':
+  'Choose a result you own and the Allosta account email of the person who should be able to consult about it — a family member, for example.':
     '본인 명의의 검사 결과와, 대신 상담받을 분(가족 등)의 알로스타 계정 이메일을 입력하세요.',
   'You have no test results to delegate yet.': '위임할 수 있는 본인 명의의 검사 결과가 없습니다.',
   'Test result': '검사 결과',

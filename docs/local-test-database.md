@@ -23,7 +23,7 @@ pnpm db:test
 ```
 
 The test bootstrap rejects database URLs unless they target
-`localhost:5433/alostar_test`. Existing `DATABASE_URL` and `DIRECT_URL` values
+`localhost:5433/allosta_test`. Existing `DATABASE_URL` and `DIRECT_URL` values
 for Neon are overwritten inside the Jest process and are never used by this
 suite.
 
@@ -32,7 +32,7 @@ suite.
 In the same PowerShell window:
 
 ```powershell
-$env:DATABASE_URL="postgresql://postgres:postgres@localhost:5433/alostar_test?schema=public"
+$env:DATABASE_URL="postgresql://postgres:postgres@localhost:5433/allosta_test?schema=public"
 $env:DIRECT_URL=$env:DATABASE_URL
 $env:JWT_SECRET="local-test-only-secret-change-me"
 

@@ -1,4 +1,4 @@
-# Alostar web portal
+# Allosta web portal
 
 React and Vite frontend with customer, advisor, and operator workspaces selected from the authenticated user role.
 

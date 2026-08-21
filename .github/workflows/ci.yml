@@ -21,20 +21,20 @@ jobs:
       postgres:
         image: postgres:17-alpine
         env:
-          POSTGRES_DB: alostar_test
+          POSTGRES_DB: allosta_test
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
         ports:
           - 5433:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d alostar_test"
+          --health-cmd "pg_isready -U postgres -d allosta_test"
           --health-interval 2s
           --health-timeout 3s
           --health-retries 15
 
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5433/alostar_test?schema=public
-      DIRECT_URL: postgresql://postgres:postgres@localhost:5433/alostar_test?schema=public
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5433/allosta_test?schema=public
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5433/allosta_test?schema=public
       JWT_SECRET: ci-test-only-secret
 
     steps:

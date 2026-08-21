@@ -237,20 +237,14 @@ async function main() {
     {
       id: '90000000-0000-4000-8000-000000000001',
       advisorId: ids.advisorProfile1,
-      startsAt: atKst(11),
-      endsAt: atKst(14),
+      startsAt: atKst(13),
+      endsAt: atKst(18),
     },
     {
       id: '90000000-0000-4000-8000-000000000002',
-      advisorId: ids.advisorProfile1,
-      startsAt: atKst(16),
-      endsAt: atKst(19),
-    },
-    {
-      id: '90000000-0000-4000-8000-000000000003',
       advisorId: ids.advisorProfile2,
-      startsAt: atKst(11),
-      endsAt: atKst(15),
+      startsAt: atKst(13),
+      endsAt: atKst(18),
     },
   ])
     await prisma.advisorAvailability.upsert({

@@ -7,7 +7,7 @@ import { LanguageSwitcher, useI18n } from './i18n';
 import { OperatorPortal } from './OperatorPortal';
 import './App.css';
 
-const SESSION_KEY = 'alostar.customer.session';
+const SESSION_KEY = 'allosta.customer.session';
 const KST = 'Asia/Seoul';
 
 function readSession(): Session | null {
@@ -73,11 +73,11 @@ function Login({ onLogin }: { onLogin: (session: Session) => void }) {
   return (
     <main className="login-page">
       <section className="login-story" aria-labelledby="welcome-title">
-        <a className="brand brand--light" href="/" aria-label="Alostar home">
+        <a className="brand brand--light" href="/" aria-label="Allosta home">
           <span className="brand-mark" aria-hidden="true">
             a
           </span>
-          <span>alostar</span>
+          <span>allosta</span>
         </a>
         <div className="story-copy">
           <p className="eyebrow eyebrow--light">{t('Your results, made clearer')}</p>
@@ -719,7 +719,7 @@ function DelegationsView({
         </div>
         <p className="muted">
           {t(
-            'Choose a result you own and the Alostar account email of the person who should be able to consult about it — a family member, for example.',
+            'Choose a result you own and the Allosta account email of the person who should be able to consult about it — a family member, for example.',
           )}
         </p>
         {ownedResults.length ? (
@@ -921,11 +921,11 @@ function CustomerPortal({ session, onLogout }: { session: Session; onLogout: () 
   return (
     <div className="portal-shell">
       <header className="portal-header">
-        <a className="brand" href="/" aria-label="Alostar customer portal">
+        <a className="brand" href="/" aria-label="Allosta customer portal">
           <span className="brand-mark" aria-hidden="true">
             a
           </span>
-          <span>alostar</span>
+          <span>allosta</span>
         </a>
         <nav aria-label={t('Customer portal')}>
           <button className={view === 'book' ? 'active' : ''} onClick={() => setView('book')}>
@@ -1016,7 +1016,7 @@ function CustomerPortal({ session, onLogout }: { session: Session; onLogout: () 
       </main>
 
       <footer>
-        <span>{t('Alostar consultation services')}</span>
+        <span>{t('Allosta consultation services')}</span>
         <span>{t('Business timezone: Asia/Seoul')}</span>
       </footer>
     </div>

@@ -1,4 +1,4 @@
-# Alostar API
+# Allosta API
 
 NestJS API for authentication, test-result access, scheduling, delegations, advisor workflows, operator reporting, and no-show processing.
 

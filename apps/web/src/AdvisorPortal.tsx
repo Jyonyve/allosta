@@ -600,11 +600,11 @@ export function AdvisorPortal({ session, onLogout }: { session: Session; onLogou
   return (
     <div className="portal-shell advisor-shell">
       <header className="portal-header">
-        <a className="brand" href="/" aria-label="Alostar advisor portal">
+        <a className="brand" href="/" aria-label="Allosta advisor portal">
           <span className="brand-mark" aria-hidden="true">
             a
           </span>
-          <span>alostar</span>
+          <span>allosta</span>
           <em>{t('Advisor')}</em>
         </a>
         <nav aria-label={t('Advisor portal')}>
@@ -693,7 +693,7 @@ export function AdvisorPortal({ session, onLogout }: { session: Session; onLogou
         )}
       </main>
       <footer>
-        <span>{t('Alostar advisor services')}</span>
+        <span>{t('Allosta advisor services')}</span>
         <span>{t('Business timezone: Asia/Seoul')}</span>
       </footer>
     </div>

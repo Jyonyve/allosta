@@ -1,6 +1,6 @@
-# Alostar consultation operations platform
+# Allosta consultation operations platform
 
-Alostar is a full-stack MVP for arranging and operating consultations about health test results. It gives customers, advisors, and operators role-specific workspaces while keeping scheduling, consent, and sensitive-data access rules on the server.
+Allosta is a full-stack MVP for arranging and operating consultations about health test results. It gives customers, advisors, and operators role-specific workspaces while keeping scheduling, consent, and sensitive-data access rules on the server.
 
 ## What is included
 
@@ -85,7 +85,7 @@ All seeded demo accounts use `DemoPass123!`:
 
 ## Verification
 
-The integration suite is guarded so it can only target `localhost:5433/alostar_test`; it will reject a Neon URL.
+The integration suite is guarded so it can only target `localhost:5433/allosta_test`; it will reject a Neon URL.
 
 ```powershell
 pnpm db:test

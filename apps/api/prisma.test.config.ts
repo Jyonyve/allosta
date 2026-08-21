@@ -6,6 +6,6 @@ export default defineConfig({
     path: 'prisma/migrations',
   },
   datasource: {
-    url: 'postgresql://postgres:postgres@localhost:5433/alostar_test?schema=public',
+    url: 'postgresql://postgres:postgres@localhost:5433/allosta_test?schema=public',
   },
 });
