@@ -95,41 +95,44 @@ async function main() {
       create: type,
     });
 
+  // Demo personas. The customer-side accounts share the 박 surname so the
+  // family-delegation scenario reads at a glance; the role each one plays is
+  // carried by its email, not by its name.
   const users = [
     {
       id: ids.customer,
       email: 'customer@demo.local',
-      name: '본인 고객',
+      name: '박서연',
       role: 'CUSTOMER' as const,
     },
     {
       id: ids.proxy,
       email: 'proxy@demo.local',
-      name: '대리 고객',
+      name: '박준호',
       role: 'CUSTOMER' as const,
     },
     {
       id: ids.advisor1,
       email: 'advisor1@demo.local',
-      name: '김상담사',
+      name: '김지훈',
       role: 'ADVISOR' as const,
     },
     {
       id: ids.advisor2,
       email: 'advisor2@demo.local',
-      name: '이상담사',
+      name: '이수진',
       role: 'ADVISOR' as const,
     },
     {
       id: ids.operator,
       email: 'operator@demo.local',
-      name: '운영자',
+      name: '최민석',
       role: 'OPERATOR' as const,
     },
     {
       id: ids.delegator,
       email: 'delegator@demo.local',
-      name: '위임받는 고객',
+      name: '박민지',
       role: 'CUSTOMER' as const,
     },
   ];
@@ -140,17 +143,19 @@ async function main() {
       create: { ...user, passwordHash },
     });
 
+  // An examinee is the person a specimen belongs to, so these names mirror
+  // the account that owns them.
   for (const examinee of [
     {
       id: ids.examinee,
       userId: ids.customer,
-      name: '본인 고객',
+      name: '박서연',
       birthDate: new Date('1990-05-12'),
     },
     {
       id: ids.proxyExaminee,
       userId: ids.proxy,
-      name: '대리 고객',
+      name: '박준호',
       birthDate: new Date('1988-11-03'),
     },
   ])
@@ -159,34 +164,38 @@ async function main() {
       update: { name: examinee.name, birthDate: examinee.birthDate },
       create: examinee,
     });
+  // An examinee with no account of their own: an elderly parent whose result
+  // can only be reached through operator-verified external consent.
   await prisma.examinee.upsert({
     where: { id: ids.externalExaminee },
-    update: { name: '외부 검사 대상자' },
+    update: { name: '박정숙' },
     create: {
       id: ids.externalExaminee,
-      name: '외부 검사 대상자',
+      name: '박정숙',
       birthDate: new Date('1955-01-18'),
     },
   });
 
+  // Summaries are shown verbatim in the customer and advisor portals, so they
+  // are written in Korean and matched to each result's test type.
   for (const result of [
     {
       id: ids.resultSelf,
       examineeId: ids.examinee,
       testTypeId: ids.typeMetabolic,
-      summary: 'Demo self-consultation result',
+      summary: '공복 혈당과 중성지방이 경계 범위로 확인되었습니다.',
     },
     {
       id: ids.resultProxy,
       examineeId: ids.examinee,
       testTypeId: ids.typeFood,
-      summary: 'Approved proxy-consultation result',
+      summary: '유제품과 밀 항목에서 중등도 반응이 확인되었습니다.',
     },
     {
       id: ids.resultExternal,
       examineeId: ids.externalExaminee,
       testTypeId: ids.typeRisk,
-      summary: 'External verification scenario',
+      summary: '비타민 D 부족과 중금속 수치 상승이 확인되었습니다.',
     },
   ])
     await prisma.testResult.upsert({
@@ -195,24 +204,26 @@ async function main() {
       create: { ...result, testedAt: new Date('2026-07-15T00:00:00Z') },
     });
 
+  const advisorIntroduction1 = '대사 건강과 음식 반응 분야를 상담합니다.';
+  const advisorIntroduction2 = '영양과 건강 위험도 분야를 상담합니다.';
   await prisma.advisorProfile.upsert({
     where: { userId: ids.advisor1 },
-    update: { active: true },
+    update: { active: true, introduction: advisorIntroduction1 },
     create: {
       id: ids.advisorProfile1,
       userId: ids.advisor1,
       active: true,
-      introduction: 'Metabolic and food-response advisor',
+      introduction: advisorIntroduction1,
     },
   });
   await prisma.advisorProfile.upsert({
     where: { userId: ids.advisor2 },
-    update: { active: true },
+    update: { active: true, introduction: advisorIntroduction2 },
     create: {
       id: ids.advisorProfile2,
       userId: ids.advisor2,
       active: true,
-      introduction: 'Nutrition and risk advisor',
+      introduction: advisorIntroduction2,
     },
   });
   await prisma.advisorTestType.createMany({
@@ -289,7 +300,9 @@ async function main() {
     });
 
   console.info('Seed complete. Demo password: DemoPass123!');
-  console.info(users.map(({ email, role }) => `${role}: ${email}`).join('\n'));
+  console.info(
+    users.map(({ email, role, name }) => `${role}: ${email} (${name})`).join('\n'),
+  );
 }
 
 main().finally(() => prisma.$disconnect());

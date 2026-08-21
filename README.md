@@ -74,14 +74,16 @@ Open `http://localhost:5173`. Vite proxies `/api` to `http://localhost:3000`, so
 
 All seeded demo accounts use `DemoPass123!`:
 
-| Portal         | Email                   |
-| -------------- | ----------------------- |
-| Customer       | `customer@demo.local`   |
-| Proxy customer | `proxy@demo.local`      |
-| Delegate       | `delegator@demo.local`  |
-| Advisor        | `advisor1@demo.local`   |
-| Advisor        | `advisor2@demo.local`   |
-| Operator       | `operator@demo.local`   |
+| Portal         | Email                  | Name   | Role in the demo scenario                                       |
+| -------------- | ---------------------- | ------ | --------------------------------------------------------------- |
+| Customer       | `customer@demo.local`  | 박서연 | Owns the seeded test results                                     |
+| Proxy customer | `proxy@demo.local`     | 박준호 | Family member with approved consent for 박서연's result          |
+| Delegate       | `delegator@demo.local` | 박민지 | Spare account for demonstrating a new delegation request         |
+| Advisor        | `advisor1@demo.local`  | 김지훈 | Metabolic and food-response consultations                        |
+| Advisor        | `advisor2@demo.local`  | 이수진 | Nutrition and health-risk consultations                          |
+| Operator       | `operator@demo.local`  | 최민석 | Operations portal                                                |
+
+박정숙 is an examinee with no account of their own; their result is reachable only through operator-verified external consent.
 
 ## Verification
 
