@@ -1584,6 +1584,9 @@ footer {
 }
 .batch-card h2 {
   margin: 7px 0 12px;
+  /* h1-h3 carry their own dark color, which would otherwise win over the
+     white inherited from .batch-card and disappear against the gradient. */
+  color: white;
 }
 .batch-card .button {
   margin-top: 13px;

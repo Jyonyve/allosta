@@ -93,7 +93,7 @@ function DashboardView({
 
         <section className="operator-card batch-card" aria-labelledby="batch-title">
           <p className="eyebrow">{t('Daily control')}</p>
-          <h2 id="batch-title">{t('No-show processing')}</h2>
+          <h2 id="batch-title">{t('Non-attendance processing')}</h2>
           <p>{t('Mark overdue reserved consultations that were never documented as not attended. This operation is safe to run more than once.')}</p>
           <button className="button button--secondary" onClick={onRunBatch} disabled={runningBatch}>
             {runningBatch ? t('Processing…') : t('Run attendance check')}

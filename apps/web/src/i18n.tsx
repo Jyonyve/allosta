@@ -200,7 +200,7 @@ const ko: Record<string, string> = {
   'Service overview': '서비스 개요',
   'Consultation status': '상담 상태',
   'Daily control': '일일 운영',
-  'No-show processing': '노쇼 처리',
+  'Non-attendance processing': '미참석 처리',
   'Processing…': '처리 중…',
   'Team performance': '팀 성과',
   'Advisor activity': '상담사 활동',
