@@ -36,21 +36,30 @@ class DashboardHandler implements IQueryHandler<DashboardQuery> {
     const statuses = Object.fromEntries(
       statusGroups.map((g) => [g.status, g._count._all]),
     );
-    const finished = (statuses.COMPLETED ?? 0) + (statuses.NO_SHOW ?? 0);
+    // Settled = consultations with a final outcome. CANCELLED is a normal,
+    // in-policy customer action rather than a failed consultation, and
+    // RESERVED/DOCUMENTING have no outcome yet, so both are excluded.
+    const settled =
+      (statuses.COMPLETED ?? 0) +
+      (statuses.NOT_ATTENDED ?? 0) +
+      (statuses.NO_SHOW ?? 0);
     const advisorStatistics = advisors.map((advisor) => {
       const rows = advisorGroups.filter((g) => g.advisorId === advisor.id),
         counts = Object.fromEntries(rows.map((g) => [g.status, g._count._all]));
-      const totalFinished = (counts.COMPLETED ?? 0) + (counts.NO_SHOW ?? 0);
+      const advisorSettled =
+        (counts.COMPLETED ?? 0) +
+        (counts.NOT_ATTENDED ?? 0) +
+        (counts.NO_SHOW ?? 0);
       return {
         advisorId: advisor.id,
         name: advisor.user.name,
         active: advisor.active,
         counts,
-        completionRate: totalFinished
-          ? (counts.COMPLETED ?? 0) / totalFinished
+        completionRate: advisorSettled
+          ? (counts.COMPLETED ?? 0) / advisorSettled
           : null,
-        noShowRate: totalFinished
-          ? (counts.NO_SHOW ?? 0) / totalFinished
+        nonAttendanceRate: advisorSettled
+          ? ((counts.NOT_ATTENDED ?? 0) + (counts.NO_SHOW ?? 0)) / advisorSettled
           : null,
       };
     });
@@ -61,8 +70,10 @@ class DashboardHandler implements IQueryHandler<DashboardQuery> {
       : [];
     return {
       counts: statuses,
-      completionRate: finished ? (statuses.COMPLETED ?? 0) / finished : null,
-      noShowRate: finished ? (statuses.NO_SHOW ?? 0) / finished : null,
+      completionRate: settled ? (statuses.COMPLETED ?? 0) / settled : null,
+      nonAttendanceRate: settled
+        ? ((statuses.NOT_ATTENDED ?? 0) + (statuses.NO_SHOW ?? 0)) / settled
+        : null,
       advisorStatistics,
       interestedProducts: productGroups.map((g) => ({
         product: products.find((p) => p.id === g.productId),

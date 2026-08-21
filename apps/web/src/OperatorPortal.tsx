@@ -55,8 +55,8 @@ function DashboardView({
           <small>{t('Completed consultations')}</small>
         </article>
         <article>
-          <span>{t('No-show rate')}</span>
-          <strong>{percent(data.noShowRate)}</strong>
+          <span>{t('Non-attendance rate')}</span>
+          <strong>{percent(data.nonAttendanceRate)}</strong>
           <small>{t('Appointments missed')}</small>
         </article>
         <article>
@@ -122,7 +122,7 @@ function DashboardView({
                 <th>{t('Reserved')}</th>
                 <th>{t('Completed')}</th>
                 <th>{t('Completion')}</th>
-                <th>{t('No-show')}</th>
+                <th>{t('Non-attendance')}</th>
               </tr>
             </thead>
             <tbody>
@@ -139,7 +139,7 @@ function DashboardView({
                   <td>{advisor.counts.RESERVED ?? 0}</td>
                   <td>{advisor.counts.COMPLETED ?? 0}</td>
                   <td>{percent(advisor.completionRate)}</td>
-                  <td>{percent(advisor.noShowRate)}</td>
+                  <td>{percent(advisor.nonAttendanceRate)}</td>
                 </tr>
               ))}
             </tbody>

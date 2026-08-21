@@ -569,7 +569,9 @@ describe('consultation PostgreSQL integration', () => {
     expect(dashboard.body.counts).toEqual(
       expect.objectContaining({ COMPLETED: 1, CANCELLED: 1 }),
     );
+    // Settled = COMPLETED + NOT_ATTENDED + NO_SHOW; CANCELLED is excluded.
     expect(dashboard.body.completionRate).toBe(1);
+    expect(dashboard.body.nonAttendanceRate).toBe(0);
     expect(dashboard.body.interestedProducts[0]).toEqual(
       expect.objectContaining({ count: 1 }),
     );
@@ -628,6 +630,17 @@ describe('consultation PostgreSQL integration', () => {
       'NOT_ATTENDED',
       'NOT_ATTENDED',
     ]);
+
+    const dashboardAfterBatch = await request(app.getHttpServer())
+      .get('/operator/dashboard')
+      .set(auth)
+      .expect(200);
+    expect(dashboardAfterBatch.body.counts).toEqual(
+      expect.objectContaining({ COMPLETED: 1, CANCELLED: 1, NOT_ATTENDED: 2 }),
+    );
+    // Settled = 1 COMPLETED + 2 NOT_ATTENDED + 0 NO_SHOW = 3.
+    expect(dashboardAfterBatch.body.completionRate).toBeCloseTo(1 / 3);
+    expect(dashboardAfterBatch.body.nonAttendanceRate).toBeCloseTo(2 / 3);
   });
 
   it('rejects a second reservation unless replaceExisting is requested', async () => {

@@ -120,14 +120,14 @@ export type OperatorConsultation = AdvisorConsultation & {
 export type Dashboard = {
   counts: Partial<Record<ConsultationStatus, number>>;
   completionRate: number | null;
-  noShowRate: number | null;
+  nonAttendanceRate: number | null;
   advisorStatistics: Array<{
     advisorId: string;
     name: string;
     active: boolean;
     counts: Partial<Record<ConsultationStatus, number>>;
     completionRate: number | null;
-    noShowRate: number | null;
+    nonAttendanceRate: number | null;
   }>;
   interestedProducts: Array<{ product: Product; count: number }>;
 };
