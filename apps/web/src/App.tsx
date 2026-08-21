@@ -73,7 +73,7 @@ function Login({ onLogin }: { onLogin: (session: Session) => void }) {
   return (
     <main className="login-page">
       <section className="login-story" aria-labelledby="welcome-title">
-        <a className="brand brand--light" href="/" aria-label="Allosta home">
+        <a className="brand brand--light" href={import.meta.env.BASE_URL} aria-label="Allosta home">
           <span className="brand-mark" aria-hidden="true">
             a
           </span>
@@ -135,6 +135,11 @@ function Login({ onLogin }: { onLogin: (session: Session) => void }) {
             <button className="button button--primary button--wide" disabled={busy}>
               {busy ? t('Signing in…') : t('Sign in')}
             </button>
+            {busy && (
+              <p className="muted" role="status">
+                {t('The first request can take up to a minute while the free demo server wakes up.')}
+              </p>
+            )}
           </form>
 
           <div className="demo-access">
@@ -921,7 +926,7 @@ function CustomerPortal({ session, onLogout }: { session: Session; onLogout: () 
   return (
     <div className="portal-shell">
       <header className="portal-header">
-        <a className="brand" href="/" aria-label="Allosta customer portal">
+        <a className="brand" href={import.meta.env.BASE_URL} aria-label="Allosta customer portal">
           <span className="brand-mark" aria-hidden="true">
             a
           </span>

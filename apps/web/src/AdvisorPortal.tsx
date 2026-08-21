@@ -600,7 +600,7 @@ export function AdvisorPortal({ session, onLogout }: { session: Session; onLogou
   return (
     <div className="portal-shell advisor-shell">
       <header className="portal-header">
-        <a className="brand" href="/" aria-label="Allosta advisor portal">
+        <a className="brand" href={import.meta.env.BASE_URL} aria-label="Allosta advisor portal">
           <span className="brand-mark" aria-hidden="true">
             a
           </span>

@@ -514,7 +514,7 @@ export function OperatorPortal({ session, onLogout }: { session: Session; onLogo
   return (
     <div className="portal-shell operator-shell">
       <header className="portal-header">
-        <a className="brand" href="/" aria-label="Allosta operator home">
+        <a className="brand" href={import.meta.env.BASE_URL} aria-label="Allosta operator home">
           <span className="brand-mark" aria-hidden="true">
             a
           </span>

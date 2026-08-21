@@ -53,6 +53,12 @@ const ko: Record<string, string> = {
   'No available times right now': '현재 예약 가능한 시간이 없습니다',
   'Try another test result or check back after advisors add availability.':
     '다른 검사 결과를 선택하거나 상담사가 일정을 추가한 뒤 다시 확인해 주세요.',
+  'The first request can take up to a minute while the free demo server wakes up.':
+    '무료 데모 서버가 깨어나는 동안 첫 요청은 최대 1분까지 걸릴 수 있습니다.',
+  'The server took too long to respond. The free demo server may have been waking up—please try again.':
+    '서버 응답이 지연됩니다. 무료 데모 서버가 깨어나는 중일 수 있으니 잠시 후 다시 시도해 주세요.',
+  'Network request failed. Check your connection and try again.':
+    '네트워크 요청에 실패했습니다. 연결 상태를 확인한 뒤 다시 시도해 주세요.',
   Reserved: '예약됨',
   'In progress': '작성 중',
   Completed: '완료',

@@ -168,21 +168,38 @@ export class ApiError extends Error {
   }
 }
 
-type RequestOptions = Omit<RequestInit, 'body'> & {
+type RequestOptions = Omit<RequestInit, 'body' | 'signal'> & {
   token?: string;
   body?: unknown;
 };
+
+const REQUEST_TIMEOUT_MS = 90_000;
 
 async function request<T>(path: string, options: RequestOptions = {}) {
   const headers = new Headers(options.headers);
   if (options.token) headers.set('Authorization', `Bearer ${options.token}`);
   if (options.body !== undefined) headers.set('Content-Type', 'application/json');
 
-  const response = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers,
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers,
+      signal: controller.signal,
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    });
+  } catch {
+    throw new ApiError(
+      controller.signal.aborted
+        ? 'The server took too long to respond. The free demo server may have been waking up—please try again.'
+        : 'Network request failed. Check your connection and try again.',
+      0,
+    );
+  } finally {
+    clearTimeout(timer);
+  }
   const payload = (await response.json().catch(() => null)) as { message?: string | string[] } | null;
 
   if (!response.ok) {
