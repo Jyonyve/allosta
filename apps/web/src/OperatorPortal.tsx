@@ -527,10 +527,10 @@ export function OperatorPortal({ session, onLogout }: { session: Session; onLogo
           <span className="avatar" aria-hidden="true">
             {session.user.name.charAt(0)}
           </span>
-          <div>
+          <span className="account-copy">
             <strong>{session.user.name}</strong>
             <small>{t('Operator')}</small>
-          </div>
+          </span>
           <LanguageSwitcher />
           <button type="button" className="text-button" onClick={onLogout}>
             {t('Log out')}
