@@ -5,6 +5,7 @@ services:
     plan: free
     region: oregon
     rootDir: .
+    autoDeploy: true
     healthCheckPath: /
     buildCommand: pnpm install --frozen-lockfile && pnpm --dir apps/api exec prisma generate && pnpm --dir apps/api build
     startCommand: pnpm --dir apps/api exec prisma migrate deploy && { [ "${SEED_DEMO:-false}" = "true" ] && pnpm --dir apps/api seed; } && pnpm --dir apps/api start:prod
