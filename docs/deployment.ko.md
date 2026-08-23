@@ -94,7 +94,7 @@ Repository에서 다음 순서로 설정합니다.
 
 | 이름      | 값                                 |
 | --------- | ---------------------------------- |
-| `API_URL` | `https://allosta-api.onrender.com` |
+| `API_URL` | `https://alostar-api.onrender.com` |
 
 URL 마지막에 `/`를 붙이지 않습니다.
 
@@ -170,7 +170,7 @@ https://jyonyve.github.io/allosta/
 4. Render Health Endpoint를 확인합니다.
 
 ```text
-https://allosta-api.onrender.com/
+https://alostar-api.onrender.com/
 ```
 
 5. GitHub Actions의 CI 및 Pages Deployment Workflow가 모두 성공했는지 확인합니다.

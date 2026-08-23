@@ -9,7 +9,7 @@
 ## Demo
 
 - **Web:** https://jyonyve.github.io/allosta/
-- **API:** https://allosta-api.onrender.com/
+- **API:** https://alostar-api.onrender.com/
 - **Repository:** https://github.com/Jyonyve/allosta
 
 > Render Free 인스턴스는 일정 시간 요청이 없으면 sleep 상태가 될 수 있어 첫 요청에 시간이 걸릴 수 있습니다.

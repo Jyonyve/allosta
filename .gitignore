@@ -24,6 +24,10 @@
 .idea
 *.iml
 
+# Local agent tooling
+.mcp.json
+**/.playwright-mcp
+
 # Misc
 **/.turbo
 **/.nara

@@ -217,7 +217,13 @@ function ChangeReservationModal({
     formatDate(value, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   return (
     <div className="modal-backdrop" onMouseDown={onCancel}>
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="change-reservation-title">
+      <div
+        className="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="change-reservation-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
         <p className="eyebrow">{past ? t('Previous time missed') : t('Change reservation')}</p>
         <h2 id="change-reservation-title">{past ? t('Book a new time') : t('Want to change reservation?')}</h2>
         <p>

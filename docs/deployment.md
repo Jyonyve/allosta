@@ -94,7 +94,7 @@ In the repository:
 
 | Name      | Value                              |
 | --------- | ---------------------------------- |
-| `API_URL` | `https://allosta-api.onrender.com` |
+| `API_URL` | `https://alostar-api.onrender.com` |
 
 Do not include a trailing slash.
 
@@ -168,7 +168,7 @@ After deployment:
 4. Check the Render health endpoint:
 
 ```text
-https://allosta-api.onrender.com/
+https://alostar-api.onrender.com/
 ```
 
 5. Confirm that GitHub Actions CI and Pages deployment workflows completed successfully.

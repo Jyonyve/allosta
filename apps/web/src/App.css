@@ -1296,6 +1296,9 @@ footer {
   .portal-header {
     grid-template-columns: auto 1fr auto;
     padding: 0 24px;
+    /* backdrop-filter makes the header a containing block for fixed children,
+       which would pin the bottom nav below to the header instead of the viewport. */
+    backdrop-filter: none;
   }
   .portal-header nav {
     position: fixed;
