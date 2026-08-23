@@ -14,8 +14,8 @@ const statusLabels: Record<string, string> = {
   CANCELLED: 'Cancelled',
 };
 
-function percent(value: number | null) {
-  return value === null ? '—' : `${Math.round(value * 100)}%`;
+function percent(value: number | null | undefined) {
+  return value == null ? '—' : `${Math.round(value * 100)}%`;
 }
 
 function messageFor(error: unknown, t: (key: string) => string) {
