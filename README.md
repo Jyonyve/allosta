@@ -328,6 +328,7 @@ Mutation 이후에는 관련 Query를 invalidate하여 서버의 최신 상태�
 상담 기록 FINAL 확정
 → advisor consultations invalidate
 → operator dashboard invalidate
+→ operator consultations invalidate
 
 상담사 가용 시간 변경
 → advisor availability invalidate
@@ -426,6 +427,7 @@ allosta/
 │        ├─ AdvisorPortal.tsx
 │        ├─ OperatorPortal.tsx
 │        ├─ api.ts
+│        ├─ queries.ts
 │        ├─ i18n.tsx
 │        └─ main.tsx
 ├─ docs/
@@ -638,9 +640,14 @@ MVP 이후 확장 가능한 영역은 다음과 같습니다.
 
 상세한 문제 정의, 요구사항, MVP 범위와 시스템 설계는 별도 제출 문서에서 확인할 수 있습니다.
 
-Repository 내 개발 참고 문서는 에이전틱 코딩 및 개발 자동화 과정에서 사용하는 내부 기술 문서로, 영어로 작성되어 있습니다.
+Repository 내 개발·운영 문서는 에이전틱 코딩과 개발 자동화에서도 활용할 수 있도록 영어 원문을 유지하며,
+동료 개발자가 별도의 번역 없이 환경과 운영 절차를 확인할 수 있도록 한국어 문서도 함께 제공합니다.
 
-- [`docs/local-test-database.md`](docs/local-test-database.md) — 로컬 PostgreSQL Integration Test 환경 및 안전 장치
-- [`docs/deployment.md`](docs/deployment.md) — GitHub Pages + Render + Neon 배포 절차
-- [`apps/api/README.md`](apps/api/README.md) — API 개발 및 환경 설정
-- [`apps/web/README.md`](apps/web/README.md) — Frontend 개발 환경
+- [`docs/local-test-database.ko.md`](docs/local-test-database.ko.md) — 로컬 PostgreSQL Integration Test 환경 및 안전 장치
+  - [English](docs/local-test-database.md)
+- [`docs/deployment.ko.md`](docs/deployment.ko.md) — GitHub Pages + Render + Neon 배포 절차
+  - [English](docs/deployment.md)
+- [`apps/api/README.ko.md`](apps/api/README.ko.md) — API 개발 및 환경 설정
+  - [English](apps/api/README.md)
+- [`apps/web/README.ko.md`](apps/web/README.ko.md) — Frontend 개발 환경
+  - [English](apps/web/README.md)
