@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ApiError, api } from './api';
+import { useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { api } from './api';
 import type { Dashboard, OperatorConsultation, PendingDelegation, Session } from './api';
 import { LanguageSwitcher, useI18n } from './i18n';
+import { firstDisplayableError, isUnauthorized, queryKeys, useUnauthorizedHandler } from './queries';
 
 type View = 'dashboard' | 'consultations' | 'consent';
 
@@ -410,65 +412,55 @@ function ConsentView({
 
 export function OperatorPortal({ session, onLogout }: { session: Session; onLogout: () => void }) {
   const { t } = useI18n();
+  const queryClient = useQueryClient();
+  const token = session.accessToken;
   const [view, setView] = useState<View>('dashboard');
-  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
-  const [consultations, setConsultations] = useState<OperatorConsultation[]>([]);
-  const [pending, setPending] = useState<PendingDelegation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [runningBatch, setRunningBatch] = useState(false);
   const [batchNotice, setBatchNotice] = useState('');
-  const [verifyingId, setVerifyingId] = useState('');
+  const [actionError, setActionError] = useState('');
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const [nextDashboard, nextConsultations, nextPending] = await Promise.all([
-        api.dashboard(session.accessToken),
-        api.operatorConsultations(session.accessToken),
-        api.pendingExternalDelegations(session.accessToken),
-      ]);
-      setDashboard(nextDashboard);
-      setConsultations(nextConsultations);
-      setPending(nextPending);
-    } catch (nextError) {
-      if (nextError instanceof ApiError && nextError.status === 401) onLogout();
-      else setError(messageFor(nextError, t));
-    } finally {
-      setLoading(false);
-    }
-  }, [onLogout, session.accessToken, t]);
+  const dashboardQuery = useQuery({
+    queryKey: queryKeys.operatorDashboard(),
+    queryFn: () => api.dashboard(token),
+  });
+  const consultationsQuery = useQuery({
+    queryKey: queryKeys.operatorConsultations(),
+    queryFn: () => api.operatorConsultations(token),
+  });
+  const pendingQuery = useQuery({
+    queryKey: queryKeys.pendingExternalDelegations(),
+    queryFn: () => api.pendingExternalDelegations(token),
+  });
 
-  useEffect(() => {
-    let active = true;
-    Promise.all([
-      api.dashboard(session.accessToken),
-      api.operatorConsultations(session.accessToken),
-      api.pendingExternalDelegations(session.accessToken),
-    ])
-      .then(([nextDashboard, nextConsultations, nextPending]) => {
-        if (!active) return;
-        setDashboard(nextDashboard);
-        setConsultations(nextConsultations);
-        setPending(nextPending);
-      })
-      .catch((nextError: unknown) => {
-        if (!active) return;
-        if (nextError instanceof ApiError && nextError.status === 401) onLogout();
-        else setError(messageFor(nextError, t));
-      })
-      .finally(() => active && setLoading(false));
-    return () => {
-      active = false;
-    };
-  }, [onLogout, session.accessToken, t]);
+  useUnauthorizedHandler([dashboardQuery.error, consultationsQuery.error, pendingQuery.error], onLogout);
+
+  const dashboard: Dashboard | null = dashboardQuery.data ?? null;
+  const consultations: OperatorConsultation[] = useMemo(
+    () => consultationsQuery.data ?? [],
+    [consultationsQuery.data],
+  );
+  const pending: PendingDelegation[] = useMemo(() => pendingQuery.data ?? [], [pendingQuery.data]);
+  const loading = dashboardQuery.isPending || consultationsQuery.isPending || pendingQuery.isPending;
+  const loadError = firstDisplayableError(dashboardQuery.error, consultationsQuery.error, pendingQuery.error);
+  const error = actionError || (loadError ? messageFor(loadError, t) : '');
+
+  const batchMutation = useMutation({
+    mutationFn: () => api.runNoShowBatch(token),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.operatorDashboard() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.operatorConsultations() });
+    },
+  });
+  const verifyMutation = useMutation({
+    mutationFn: (id: string) => api.verifyExternalDelegation(token, id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.pendingExternalDelegations() }),
+  });
+  const runningBatch = batchMutation.isPending;
+  const verifyingId = verifyMutation.isPending ? verifyMutation.variables : '';
 
   async function runBatch() {
-    setRunningBatch(true);
     setBatchNotice('');
     try {
-      const result = await api.runNoShowBatch(session.accessToken);
+      const result = await batchMutation.mutateAsync();
       setBatchNotice(
         result.count > 0
           ? t(
@@ -479,25 +471,18 @@ export function OperatorPortal({ session, onLogout }: { session: Session; onLogo
             )
           : t('No overdue consultations found.'),
       );
-      await load();
     } catch (nextError) {
       setBatchNotice(messageFor(nextError, t));
-    } finally {
-      setRunningBatch(false);
     }
   }
 
   async function verify(id: string) {
-    setVerifyingId(id);
-    setError('');
+    setActionError('');
     try {
-      await api.verifyExternalDelegation(session.accessToken, id);
-      setPending((current) => current.filter((item) => item.id !== id));
+      await verifyMutation.mutateAsync(id);
     } catch (nextError) {
-      if (nextError instanceof ApiError && nextError.status === 401) onLogout();
-      else setError(messageFor(nextError, t));
-    } finally {
-      setVerifyingId('');
+      if (isUnauthorized(nextError)) onLogout();
+      else setActionError(messageFor(nextError, t));
     }
   }
 

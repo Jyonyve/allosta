@@ -1,8 +1,8 @@
 # Disposable test database
 
-This PostgreSQL instance is for local integration and end-to-end tests. It is
-separate from Neon, listens only on `127.0.0.1:5433`, and stores its data in a
-temporary filesystem.
+This PostgreSQL instance is dedicated to local integration and end-to-end tests.
+
+It is completely separate from Neon, listens only on `127.0.0.1:5433`, and stores its data in disposable container storage.
 
 ## Start PostgreSQL
 
@@ -15,19 +15,23 @@ pnpm db:test:status
 
 ## Run the integration suite
 
-The following command starts PostgreSQL, applies the committed migrations, and
-runs the local-only integration tests:
+The following command starts PostgreSQL, applies the migrations committed to the repository, and runs the local integration test suite:
 
 ```powershell
 pnpm db:test
 ```
 
-The test bootstrap rejects database URLs unless they target
-`localhost:5433/allosta_test`. Existing `DATABASE_URL` and `DIRECT_URL` values
-for Neon are overwritten inside the Jest process and are never used by this
-suite.
+The integration test bootstrap accepts only the following database target:
 
-## Apply the existing migration
+```text
+localhost:5433/allosta_test
+```
+
+Existing `DATABASE_URL` and `DIRECT_URL` values, including Neon credentials, are overridden inside the Jest process and are never used by this suite.
+
+This prevents integration tests from accidentally running against a development or hosted database.
+
+## Apply the existing migrations manually
 
 In the same PowerShell window:
 
@@ -40,9 +44,15 @@ pnpm --dir apps/api exec prisma migrate deploy
 pnpm --dir apps/api exec prisma migrate status
 ```
 
-Use `migrate deploy`, not `migrate dev`. The disposable database should apply
-the migrations already committed to the repository and must not create or
-modify migration files.
+Use `migrate deploy`, not `migrate dev`.
+
+The disposable database is intended to apply migrations already committed to the repository. It should not create or modify migration files.
+
+## Why real PostgreSQL is used
+
+The schema includes PostgreSQL-specific integrity rules such as exclusion constraints and partial unique indexes.
+
+These constraints are part of the application's concurrency and scheduling guarantees, so the integration suite intentionally runs against real PostgreSQL rather than an in-memory substitute.
 
 ## Stop and erase PostgreSQL
 
@@ -50,5 +60,4 @@ modify migration files.
 pnpm db:test:down
 ```
 
-The `down` command removes the container. Its temporary database storage is
-discarded with it.
+The command removes the test container and its disposable database storage.

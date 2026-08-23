@@ -1,71 +1,174 @@
-# Deployment: GitHub Pages + Render API + Neon Postgres
+# Deployment: GitHub Pages + Render API + Neon PostgreSQL
 
-Free hosting split across three providers. The web app is a static Vite build served by
-GitHub Pages; the NestJS API runs as a Render Web Service; the database lives on Neon.
+The demo is deployed across three providers:
 
+- GitHub Pages serves the static React/Vite frontend.
+- Render runs the NestJS API.
+- Neon hosts PostgreSQL.
+
+```text
+Browser
+   │
+   ▼
+GitHub Pages
+React / Vite
+   │
+   │ HTTPS API requests
+   ▼
+Render Web Service
+NestJS API
+   │
+   ▼
+Neon PostgreSQL
 ```
-Browser ──> GitHub Pages (static web, VITE_API_URL baked in at build)
-                 │
-                 └─> Render Web Service (NestJS API, CORS open)
-                          │
-                          └─> Neon PostgreSQL (pooled DATABASE_URL)
+
+## 1. Prepare the database — Neon
+
+Create a PostgreSQL database in Neon and prepare two connection strings:
+
+- `DATABASE_URL` — pooled connection string used by the application at runtime
+- `DIRECT_URL` — direct connection string used by Prisma migrations
+
+Keep both values on the server side. They must never be exposed through Vite environment variables.
+
+## 2. Deploy the API — Render
+
+### Blueprint — recommended
+
+Push the repository, then in Render select:
+
+**New → Blueprint**
+
+Choose this repository.
+
+Render reads `render.yaml`, creates the `allosta-api` Web Service, and requests the environment variables marked with `sync: false`.
+
+| Variable       | Value                            |
+| -------------- | -------------------------------- |
+| `DATABASE_URL` | Neon pooled connection string    |
+| `DIRECT_URL`   | Neon direct connection string    |
+| `JWT_SECRET`   | Long unpredictable random secret |
+
+For example:
+
+```bash
+openssl rand -hex 32
 ```
 
-## 1. Prepare the database (Neon)
+`SEED_DEMO` defaults to `"true"` in `render.yaml`.
 
-Create a database in Neon and grab two connection strings:
+When enabled, the application seeds the demo dataset during startup after migrations have been applied.
 
-- `DATABASE_URL` — the pooled connection string, used at runtime
-- `DIRECT_URL` — the direct connection string, used by Prisma migrations
+Set it to `"false"` if demo reseeding is no longer desired.
 
-## 2. Deploy the API (Render)
+### Manual Render setup
 
-Two options:
+Alternatively:
 
-- **Blueprint (recommended):** push this repo, then in Render use
-  **New → Blueprint** and select the repo. Render reads `render.yaml`, creates the
-  `allosta` web service, and prompts for the `sync: false` env vars:
+1. Select **New → Web Service**.
+2. Connect this repository.
+3. Set the root directory to `.`.
+4. Use the build and start commands defined in `render.yaml`.
+5. Add the same environment variables listed above.
 
-  | Variable        | Value                                         |
-  | --------------- | --------------------------------------------- |
-  | `DATABASE_URL`  | Neon pooled connection string                 |
-  | `DIRECT_URL`    | Neon direct connection string                 |
-  | `JWT_SECRET`    | long random string (e.g. `openssl rand -hex 32`) |
+During deployment, Render runs Prisma Client generation and the API build.
 
-  `SEED_DEMO` already defaults to `"true"`, so demo data is seeded on first start.
-  Set it to `"false"` to skip reseeding on later restarts.
+At application startup it runs:
 
-- **Manual:** New → Web Service → repo → root directory `.`, build and start commands
-  from `render.yaml`, same env vars.
+```text
+prisma migrate deploy
+→ optional demo seed
+→ NestJS production server
+```
 
-The service runs `prisma generate` + `build` during the deploy and
-`migrate deploy` (+ optional seed) on start. The `GET /` route is the health check.
+`GET /` is used as the health-check endpoint.
 
-## 3. Deploy the web app (GitHub Pages)
+## 3. Deploy the frontend — GitHub Pages
 
-1. In the repo: **Settings → Pages → Source → "Deploy from a GitHub Action"**.
-2. In **Settings → Secrets and variables → Actions → Variables**, add:
+In the repository:
 
-   | Name     | Value                                  |
-   | -------- | -------------------------------------- |
-   | `API_URL`| `https://allosta-api.onrender.com`      |
+1. Open **Settings → Pages**.
+2. Select **Deploy from a GitHub Action** as the source.
+3. Open **Settings → Secrets and variables → Actions → Variables**.
+4. Add:
 
-   No trailing slash. This is baked into the bundle as `VITE_API_URL`.
-3. Push to `main` (or run the `Deploy web to GitHub Pages` workflow manually).
-   The workflow builds `apps/web` and publishes `apps/web/dist`.
+| Name      | Value                              |
+| --------- | ---------------------------------- |
+| `API_URL` | `https://allosta-api.onrender.com` |
 
-The action fails fast if `API_URL` is missing so a silent `/api` fallback never ships.
+Do not include a trailing slash.
 
-## Caveats (free tiers)
+The Pages workflow passes this value to the Vite build as `VITE_API_URL`.
 
-- **Render free web service sleeps** after ~15 minutes idle: the first request after
-  idle is slow, and the daily 00:10 KST no-show cron only runs while the service is
-  awake. Operators can always run the batch manually from the dashboard.
-- **`API_URL` changes require a web redeploy** because it is compiled into the bundle.
-- GitHub Pages is served from `https://<owner>.github.io/<repo>` unless a custom domain
-  is configured.
+Push a frontend-related change to `main`, or manually run the **Deploy web to GitHub Pages** workflow.
 
-## Verify
+The workflow builds:
 
-- Open the Pages URL, read the seeded accounts below, and log in.
-- Sweep `https://allosta-api.onrender.com/` for the API health response.
+```text
+apps/web
+```
+
+and publishes:
+
+```text
+apps/web/dist
+```
+
+The workflow fails immediately when `API_URL` is missing. This prevents a production build from silently falling back to the local `/api` proxy.
+
+## Free-tier caveats
+
+### Render sleep
+
+The Render Free Web Service may sleep after a period of inactivity.
+
+The first API request after sleep can therefore be slower while the service wakes up.
+
+### Scheduled non-attendance processing
+
+The API contains a scheduled job that runs daily at `00:10` in `Asia/Seoul`.
+
+It changes overdue consultations that are still in `RESERVED` state to `NOT_ATTENDED`.
+
+Because the scheduler runs inside the Render application process, the scheduled execution is not guaranteed while a free Render instance is asleep.
+
+For the demo, an operator can run the same non-attendance processing manually from the operator dashboard.
+
+`NOT_ATTENDED` means that the scheduled consultation ended without a consultation record being started. It does not assert that customer absence was externally confirmed.
+
+`NO_SHOW` is reserved for a future flow where actual customer non-attendance can be explicitly confirmed, for example through CTI integration.
+
+### Frontend API URL
+
+`API_URL` is compiled into the frontend bundle.
+
+Changing it requires rebuilding and redeploying the GitHub Pages frontend.
+
+### GitHub Pages URL
+
+Without a custom domain, the default URL is:
+
+```text
+https://<owner>.github.io/<repo>/
+```
+
+For this repository:
+
+```text
+https://jyonyve.github.io/allosta/
+```
+
+## Verification
+
+After deployment:
+
+1. Open the GitHub Pages URL.
+2. Log in with one of the seeded demo accounts.
+3. Verify customer, advisor, and operator workspaces.
+4. Check the Render health endpoint:
+
+```text
+https://allosta-api.onrender.com/
+```
+
+5. Confirm that GitHub Actions CI and Pages deployment workflows completed successfully.

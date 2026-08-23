@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import { ApiError, api } from './api';
-import type { AdvisorAvailability, AdvisorConsultation, AdvisorProfile, Product, RecordInput, Session } from './api';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { api } from './api';
+import type { AdvisorAvailability, AdvisorConsultation, Product, RecordInput, Session } from './api';
 import { LanguageSwitcher, useI18n } from './i18n';
+import { firstDisplayableError, isUnauthorized, queryKeys, useUnauthorizedHandler } from './queries';
 
 const KST = 'Asia/Seoul';
 function errorMessage(error: unknown, t: (key: string) => string) {
@@ -40,23 +42,37 @@ function overlaps(start: number, end: number, item: AdvisorAvailability) {
 
 function AvailabilityView({
   token,
+  advisorUserId,
   availability,
-  onChanged,
   onUnauthorized,
 }: {
   token: string;
+  advisorUserId: string;
   availability: AdvisorAvailability[];
-  onChanged: () => Promise<void>;
   onUnauthorized: () => void;
 }) {
   const { t, formatDate } = useI18n();
+  const queryClient = useQueryClient();
+  const invalidateAvailability = () =>
+    queryClient.invalidateQueries({ queryKey: queryKeys.advisorAvailability(advisorUserId) });
+
+  const saveMutation = useMutation({
+    mutationFn: ({ id, startsAt, endsAt }: { id: string; startsAt: string; endsAt: string }) =>
+      id ? api.updateAvailability(token, id, startsAt, endsAt) : api.createAvailability(token, startsAt, endsAt),
+    onSuccess: invalidateAvailability,
+  });
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.deleteAvailability(token, id),
+    onSuccess: invalidateAvailability,
+  });
+
   const [editingId, setEditingId] = useState('');
   const [date, setDate] = useState(() => tomorrowKst());
   const [startsAt, setStartsAt] = useState('11:00');
   const [endsAt, setEndsAt] = useState('14:00');
-  const [busy, setBusy] = useState(false);
   const [deletingId, setDeletingId] = useState('');
   const [notice, setNotice] = useState<{ kind: 'error' | 'success'; text: string } | null>(null);
+  const busy = saveMutation.isPending;
 
   function reset() {
     setEditingId('');
@@ -89,18 +105,17 @@ function AvailabilityView({
       setNotice({ kind: 'error', text: t('This range overlaps availability you already registered.') });
       return;
     }
-    setBusy(true);
     try {
-      if (editingId) await api.updateAvailability(token, editingId, start.toISOString(), end.toISOString());
-      else await api.createAvailability(token, start.toISOString(), end.toISOString());
-      await onChanged();
+      await saveMutation.mutateAsync({
+        id: editingId,
+        startsAt: start.toISOString(),
+        endsAt: end.toISOString(),
+      });
       setNotice({ kind: 'success', text: editingId ? t('Availability updated.') : t('Availability added.') });
       reset();
     } catch (error) {
-      if (error instanceof ApiError && error.status === 401) onUnauthorized();
+      if (isUnauthorized(error)) onUnauthorized();
       else setNotice({ kind: 'error', text: errorMessage(error, t) });
-    } finally {
-      setBusy(false);
     }
   }
 
@@ -116,12 +131,11 @@ function AvailabilityView({
     setDeletingId(item.id);
     setNotice(null);
     try {
-      await api.deleteAvailability(token, item.id);
-      await onChanged();
+      await deleteMutation.mutateAsync(item.id);
       if (editingId === item.id) reset();
       setNotice({ kind: 'success', text: t('Availability deleted.') });
     } catch (error) {
-      if (error instanceof ApiError && error.status === 401) onUnauthorized();
+      if (isUnauthorized(error)) onUnauthorized();
       else setNotice({ kind: 'error', text: errorMessage(error, t) });
     } finally {
       setDeletingId('');
@@ -258,18 +272,19 @@ const advisorStatus: Record<AdvisorConsultation['status'], string> = {
 
 function RecordEditor({
   token,
+  advisorUserId,
   consultation,
   products,
-  onUpdated,
   onUnauthorized,
 }: {
   token: string;
+  advisorUserId: string;
   consultation: AdvisorConsultation;
   products: Product[];
-  onUpdated: () => Promise<void>;
   onUnauthorized: () => void;
 }) {
   const { t } = useI18n();
+  const queryClient = useQueryClient();
   const record = consultation.record;
   const final = record?.status === 'FINAL';
   const editable = consultation.status === 'RESERVED' || consultation.status === 'DOCUMENTING';
@@ -279,8 +294,28 @@ function RecordEditor({
   const [followUpRequired, setFollowUpRequired] = useState(record?.followUpRequired ?? false);
   const [followUpNote, setFollowUpNote] = useState(record?.followUpNote ?? '');
   const [productIds, setProductIds] = useState(() => record?.interestedProducts.map((item) => item.product.id) ?? []);
-  const [busy, setBusy] = useState<'draft' | 'final' | ''>('');
   const [notice, setNotice] = useState<{ kind: 'error' | 'success'; text: string } | null>(null);
+
+  const saveMutation = useMutation({
+    mutationFn: ({ finalize, payload }: { finalize: boolean; payload: RecordInput }) =>
+      finalize
+        ? api.finalizeRecord(token, consultation.id, payload)
+        : api.saveDraft(token, consultation.id, payload),
+    // The consultation list carries the record and status, so refetching it delivers the latest record.
+    onSuccess: (_data, { finalize }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.advisorConsultations(advisorUserId) });
+      if (finalize) {
+        // Finalizing completes the consultation, which changes operator reporting.
+        queryClient.invalidateQueries({ queryKey: queryKeys.operatorDashboard() });
+        queryClient.invalidateQueries({ queryKey: queryKeys.operatorConsultations() });
+      }
+    },
+  });
+  const busy: 'draft' | 'final' | '' = saveMutation.isPending
+    ? saveMutation.variables.finalize
+      ? 'final'
+      : 'draft'
+    : '';
 
   const input: RecordInput = {
     mainQuestion: mainQuestion || undefined,
@@ -297,21 +332,16 @@ function RecordEditor({
       return;
     }
     if (finalize && !window.confirm(t('Finalize this record? Final records cannot be edited.'))) return;
-    setBusy(finalize ? 'final' : 'draft');
     setNotice(null);
     try {
-      if (finalize) await api.finalizeRecord(token, consultation.id, input);
-      else await api.saveDraft(token, consultation.id, input);
-      await onUpdated();
+      await saveMutation.mutateAsync({ finalize, payload: input });
       setNotice({
         kind: 'success',
         text: finalize ? t('Record finalized and consultation completed.') : t('Draft saved.'),
       });
     } catch (error) {
-      if (error instanceof ApiError && error.status === 401) onUnauthorized();
+      if (isUnauthorized(error)) onUnauthorized();
       else setNotice({ kind: 'error', text: errorMessage(error, t) });
-    } finally {
-      setBusy('');
     }
   }
 
@@ -435,15 +465,15 @@ function RecordEditor({
 
 function ScheduleView({
   token,
+  advisorUserId,
   consultations,
   products,
-  onUpdated,
   onUnauthorized,
 }: {
   token: string;
+  advisorUserId: string;
   consultations: AdvisorConsultation[];
   products: Product[];
-  onUpdated: () => Promise<void>;
   onUnauthorized: () => void;
 }) {
   const { t, formatDate } = useI18n();
@@ -534,9 +564,9 @@ function ScheduleView({
           <RecordEditor
             key={selected.id}
             token={token}
+            advisorUserId={advisorUserId}
             consultation={selected}
             products={products}
-            onUpdated={onUpdated}
             onUnauthorized={onUnauthorized}
           />
         </div>
@@ -547,50 +577,51 @@ function ScheduleView({
 
 export function AdvisorPortal({ session, onLogout }: { session: Session; onLogout: () => void }) {
   const { t } = useI18n();
+  const token = session.accessToken;
+  const advisorUserId = session.user.id;
   const [view, setView] = useState<'schedule' | 'availability'>('schedule');
-  const [profile, setProfile] = useState<AdvisorProfile | null>(null);
-  const [availability, setAvailability] = useState<AdvisorAvailability[]>([]);
-  const [consultations, setConsultations] = useState<AdvisorConsultation[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [now] = useState(() => Date.now());
 
   const onUnauthorized = useCallback(() => onLogout(), [onLogout]);
-  const loadAvailability = useCallback(
-    async () => setAvailability(await api.advisorAvailability(session.accessToken)),
-    [session.accessToken],
-  );
-  const loadConsultations = useCallback(
-    async () => setConsultations(await api.advisorConsultations(session.accessToken)),
-    [session.accessToken],
+
+  const profileQuery = useQuery({
+    queryKey: queryKeys.advisorProfile(advisorUserId),
+    queryFn: () => api.advisorProfile(token),
+  });
+  const availabilityQuery = useQuery({
+    queryKey: queryKeys.advisorAvailability(advisorUserId),
+    queryFn: () => api.advisorAvailability(token),
+  });
+  const consultationsQuery = useQuery({
+    queryKey: queryKeys.advisorConsultations(advisorUserId),
+    queryFn: () => api.advisorConsultations(token),
+  });
+  const productsQuery = useQuery({
+    queryKey: queryKeys.products(),
+    queryFn: () => api.products(token),
+  });
+
+  useUnauthorizedHandler(
+    [profileQuery.error, availabilityQuery.error, consultationsQuery.error, productsQuery.error],
+    onUnauthorized,
   );
 
-  useEffect(() => {
-    let active = true;
-    Promise.all([
-      api.advisorProfile(session.accessToken),
-      api.advisorAvailability(session.accessToken),
-      api.advisorConsultations(session.accessToken),
-      api.products(session.accessToken),
-    ])
-      .then(([nextProfile, nextAvailability, nextConsultations, nextProducts]) => {
-        if (!active) return;
-        setProfile(nextProfile);
-        setAvailability(nextAvailability);
-        setConsultations(nextConsultations);
-        setProducts(nextProducts);
-      })
-      .catch((nextError: unknown) => {
-        if (!active) return;
-        if (nextError instanceof ApiError && nextError.status === 401) onUnauthorized();
-        else setError(errorMessage(nextError, t));
-      })
-      .finally(() => active && setLoading(false));
-    return () => {
-      active = false;
-    };
-  }, [onUnauthorized, session.accessToken, t]);
+  const profile = profileQuery.data ?? null;
+  const availability: AdvisorAvailability[] = useMemo(() => availabilityQuery.data ?? [], [availabilityQuery.data]);
+  const consultations: AdvisorConsultation[] = useMemo(
+    () => consultationsQuery.data ?? [],
+    [consultationsQuery.data],
+  );
+  const products: Product[] = useMemo(() => productsQuery.data ?? [], [productsQuery.data]);
+  const loading =
+    profileQuery.isPending || availabilityQuery.isPending || consultationsQuery.isPending || productsQuery.isPending;
+  const loadError = firstDisplayableError(
+    profileQuery.error,
+    availabilityQuery.error,
+    consultationsQuery.error,
+    productsQuery.error,
+  );
+  const error = loadError ? errorMessage(loadError, t) : '';
 
   const upcoming = consultations.filter(
     (item) => item.status === 'RESERVED' && new Date(item.scheduledStartAt).getTime() > now,
@@ -677,17 +708,17 @@ export function AdvisorPortal({ session, onLogout }: { session: Session; onLogou
           </div>
         ) : view === 'schedule' ? (
           <ScheduleView
-            token={session.accessToken}
+            token={token}
+            advisorUserId={advisorUserId}
             consultations={consultations}
             products={products}
-            onUpdated={loadConsultations}
             onUnauthorized={onUnauthorized}
           />
         ) : (
           <AvailabilityView
-            token={session.accessToken}
+            token={token}
+            advisorUserId={advisorUserId}
             availability={availability}
-            onChanged={loadAvailability}
             onUnauthorized={onUnauthorized}
           />
         )}

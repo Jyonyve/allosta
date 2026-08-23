@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import { ApiError, api } from './api';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { api } from './api';
 import type { Consultation, MyDelegation, Session, TestResult } from './api';
 import { AdvisorPortal } from './AdvisorPortal';
 import { LanguageSwitcher, useI18n } from './i18n';
 import { OperatorPortal } from './OperatorPortal';
+import { firstDisplayableError, isUnauthorized, queryKeys, useUnauthorizedHandler } from './queries';
 import './App.css';
 
 const SESSION_KEY = 'allosta.customer.session';
@@ -244,27 +246,35 @@ function ChangeReservationModal({
 
 function BookingView({
   token,
+  userId,
   results,
   consultations,
-  onReserved,
   onUnauthorized,
 }: {
   token: string;
+  userId: string;
   results: TestResult[];
   consultations: Consultation[];
-  onReserved: () => Promise<void>;
   onUnauthorized: () => void;
 }) {
   const { t, formatDate } = useI18n();
+  const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState(results[0]?.id ?? '');
-  const [slots, setSlots] = useState<string[]>([]);
   const [selectedDay, setSelectedDay] = useState('');
   const [selectedSlot, setSelectedSlot] = useState('');
-  const [loadingSlots, setLoadingSlots] = useState(true);
-  const [booking, setBooking] = useState(false);
   const [showChangeModal, setShowChangeModal] = useState(false);
   const [notice, setNotice] = useState<{ kind: 'error' | 'success'; text: string } | null>(null);
   const [now] = useState(() => Date.now());
+
+  const slotsQuery = useQuery({
+    queryKey: queryKeys.availableSlots(selectedId),
+    queryFn: () => api.availableSlots(token, selectedId),
+    enabled: Boolean(selectedId),
+  });
+  useUnauthorizedHandler([slotsQuery.error], onUnauthorized);
+
+  const slots = useMemo(() => slotsQuery.data ?? [], [slotsQuery.data]);
+  const loadingSlots = slotsQuery.isPending;
 
   const selectedResult = results.find((result) => result.id === selectedId);
   const existingActive = consultations.find(
@@ -280,43 +290,37 @@ function BookingView({
     return groups;
   }, [slots]);
   const days = [...groupedSlots.keys()];
+  // Never keep a day or slot that does not belong to the slot data currently shown.
+  const activeDay = selectedDay && groupedSlots.has(selectedDay) ? selectedDay : (days[0] ?? '');
+  const activeSlot = slots.includes(selectedSlot) ? selectedSlot : '';
 
-  useEffect(() => {
-    if (!selectedId) return;
-    let active = true;
-    api
-      .availableSlots(token, selectedId)
-      .then((nextSlots) => {
-        if (!active) return;
-        setSlots(nextSlots);
-        setSelectedDay(nextSlots[0] ? dayKey(nextSlots[0]) : '');
-      })
-      .catch((error: unknown) => {
-        if (!active) return;
-        if (error instanceof ApiError && error.status === 401) onUnauthorized();
-        else setNotice({ kind: 'error', text: messageFor(error, t) });
-      })
-      .finally(() => active && setLoadingSlots(false));
-    return () => {
-      active = false;
-    };
-  }, [onUnauthorized, selectedId, t, token]);
+  const reserveMutation = useMutation({
+    mutationFn: ({ testResultId, slot, replaceExisting }: { testResultId: string; slot: string; replaceExisting: boolean }) =>
+      api.reserve(token, testResultId, slot, replaceExisting),
+    onSuccess: (_data, { testResultId }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.myConsultations(userId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.availableSlots(testResultId) });
+    },
+  });
+  const booking = reserveMutation.isPending;
 
   function selectResult(id: string) {
     if (id === selectedId) return;
-    setLoadingSlots(true);
+    setSelectedDay('');
     setSelectedSlot('');
     setNotice(null);
     setSelectedId(id);
   }
 
   async function doReserve(replaceExisting: boolean) {
-    if (!selectedResult || !selectedSlot) return;
-    setBooking(true);
+    if (!selectedResult || !activeSlot) return;
     setNotice(null);
     try {
-      await api.reserve(token, selectedResult.id, selectedSlot, replaceExisting);
-      setSlots((current) => current.filter((slot) => slot !== selectedSlot));
+      await reserveMutation.mutateAsync({
+        testResultId: selectedResult.id,
+        slot: activeSlot,
+        replaceExisting,
+      });
       setSelectedSlot('');
       setShowChangeModal(false);
       setNotice({
@@ -325,17 +329,14 @@ function BookingView({
           ? t('Your consultation was changed to the new time.')
           : t('Your consultation is reserved. You can review it in My consultations.'),
       });
-      await onReserved();
     } catch (error) {
-      if (error instanceof ApiError && error.status === 401) onUnauthorized();
+      if (isUnauthorized(error)) onUnauthorized();
       else setNotice({ kind: 'error', text: messageFor(error, t) });
-    } finally {
-      setBooking(false);
     }
   }
 
   function handleReserve() {
-    if (!selectedResult || !selectedSlot) return;
+    if (!selectedResult || !activeSlot) return;
     if (existingActive) {
       if (existingActive.status === 'DOCUMENTING') {
         setNotice({
@@ -349,6 +350,9 @@ function BookingView({
     }
     doReserve(false);
   }
+
+  const slotError = firstDisplayableError(slotsQuery.error);
+  const slotNotice = notice ?? (slotError ? ({ kind: 'error', text: messageFor(slotError, t) } as const) : null);
 
   if (!results.length) {
     return (
@@ -441,8 +445,8 @@ function BookingView({
                   <button
                     type="button"
                     role="tab"
-                    aria-selected={selectedDay === day}
-                    className={selectedDay === day ? 'active' : ''}
+                    aria-selected={activeDay === day}
+                    className={activeDay === day ? 'active' : ''}
                     key={day}
                     onClick={() => {
                       setSelectedDay(day);
@@ -456,13 +460,13 @@ function BookingView({
             </div>
             <fieldset className="time-grid">
               <legend className="sr-only">{t('Available appointment times')}</legend>
-              {(groupedSlots.get(selectedDay) ?? []).map((slot) => (
-                <label key={slot} className={selectedSlot === slot ? 'selected' : ''}>
+              {(groupedSlots.get(activeDay) ?? []).map((slot) => (
+                <label key={slot} className={activeSlot === slot ? 'selected' : ''}>
                   <input
                     type="radio"
                     name="appointment-time"
                     value={slot}
-                    checked={selectedSlot === slot}
+                    checked={activeSlot === slot}
                     onChange={() => setSelectedSlot(slot)}
                   />
                   {formatDate(slot, { hour: 'numeric', minute: '2-digit' })}
@@ -473,8 +477,8 @@ function BookingView({
               <div>
                 <span>{t('Your selection')}</span>
                 <strong>
-                  {selectedSlot
-                    ? formatDate(selectedSlot, {
+                  {activeSlot
+                    ? formatDate(activeSlot, {
                         weekday: 'short',
                         month: 'short',
                         day: 'numeric',
@@ -487,7 +491,7 @@ function BookingView({
               <button
                 className="button button--primary"
                 type="button"
-                disabled={!selectedSlot || booking}
+                disabled={!activeSlot || booking}
                 onClick={handleReserve}
               >
                 {booking ? t('Reserving…') : t('Reserve consultation')}
@@ -501,16 +505,16 @@ function BookingView({
             <p>{t('Try another test result or check back after advisors add availability.')}</p>
           </div>
         )}
-        {notice && (
-          <p className={`notice notice--${notice.kind}`} role="status">
-            {notice.text}
+        {slotNotice && (
+          <p className={`notice notice--${slotNotice.kind}`} role="status">
+            {slotNotice.text}
           </p>
         )}
       </section>
-      {showChangeModal && existingActive && selectedSlot && (
+      {showChangeModal && existingActive && activeSlot && (
         <ChangeReservationModal
           existing={existingActive}
-          newSlot={selectedSlot}
+          newSlot={activeSlot}
           busy={booking}
           onCancel={() => setShowChangeModal(false)}
           onConfirm={() => doReserve(true)}
@@ -844,79 +848,74 @@ function DelegationsView({
 
 function CustomerPortal({ session, onLogout }: { session: Session; onLogout: () => void }) {
   const { t } = useI18n();
+  const queryClient = useQueryClient();
+  const token = session.accessToken;
+  const userId = session.user.id;
   const [view, setView] = useState<'book' | 'consultations' | 'delegations'>('book');
-  const [results, setResults] = useState<TestResult[]>([]);
-  const [consultations, setConsultations] = useState<Consultation[]>([]);
-  const [delegations, setDelegations] = useState<MyDelegation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   const handleUnauthorized = useCallback(() => {
     sessionStorage.removeItem(SESSION_KEY);
     onLogout();
   }, [onLogout]);
 
-  const loadConsultations = useCallback(async () => {
-    const next = await api.consultations(session.accessToken);
-    setConsultations(next);
-  }, [session.accessToken]);
+  const resultsQuery = useQuery({
+    queryKey: queryKeys.testResults(userId),
+    queryFn: () => api.testResults(token),
+  });
+  const consultationsQuery = useQuery({
+    queryKey: queryKeys.myConsultations(userId),
+    queryFn: () => api.consultations(token),
+  });
+  const delegationsQuery = useQuery({
+    queryKey: queryKeys.pendingConsentDelegations(),
+    queryFn: () => api.myPendingDelegations(token),
+  });
 
-  const loadDelegations = useCallback(async () => {
-    const next = await api.myPendingDelegations(session.accessToken);
-    setDelegations(next);
-  }, [session.accessToken]);
+  useUnauthorizedHandler(
+    [resultsQuery.error, consultationsQuery.error, delegationsQuery.error],
+    handleUnauthorized,
+  );
 
-  useEffect(() => {
-    let active = true;
-    Promise.all([
-      api.testResults(session.accessToken),
-      api.consultations(session.accessToken),
-      api.myPendingDelegations(session.accessToken),
-    ])
-      .then(([nextResults, nextConsultations, nextDelegations]) => {
-        if (!active) return;
-        setResults(nextResults);
-        setConsultations(nextConsultations);
-        setDelegations(nextDelegations);
-      })
-      .catch((nextError: unknown) => {
-        if (!active) return;
-        if (nextError instanceof ApiError && nextError.status === 401) handleUnauthorized();
-        else setError(messageFor(nextError, t));
-      })
-      .finally(() => active && setLoading(false));
-    return () => {
-      active = false;
-    };
-  }, [handleUnauthorized, session.accessToken, t]);
+  const results: TestResult[] = useMemo(() => resultsQuery.data ?? [], [resultsQuery.data]);
+  const consultations: Consultation[] = useMemo(() => consultationsQuery.data ?? [], [consultationsQuery.data]);
+  const delegations: MyDelegation[] = useMemo(() => delegationsQuery.data ?? [], [delegationsQuery.data]);
+  const loading = resultsQuery.isPending || consultationsQuery.isPending || delegationsQuery.isPending;
+  const loadError = firstDisplayableError(resultsQuery.error, consultationsQuery.error, delegationsQuery.error);
+  const error = loadError ? messageFor(loadError, t) : '';
 
-  async function cancelConsultation(id: string) {
+  const invalidateDelegations = () =>
+    queryClient.invalidateQueries({ queryKey: queryKeys.pendingConsentDelegations() });
+
+  const cancelMutation = useMutation({
+    mutationFn: (id: string) => api.cancel(token, id),
+    onSuccess: (_data, id) => {
+      const testResultId = consultations.find((item) => item.id === id)?.testResult.id;
+      queryClient.invalidateQueries({ queryKey: queryKeys.myConsultations(userId) });
+      if (testResultId) queryClient.invalidateQueries({ queryKey: queryKeys.availableSlots(testResultId) });
+    },
+  });
+
+  const requestDelegationMutation = useMutation({
+    mutationFn: ({ testResultId, delegateEmail }: { testResultId: string; delegateEmail: string }) =>
+      api.requestDelegation(token, testResultId, delegateEmail),
+    onSuccess: invalidateDelegations,
+  });
+
+  const decideDelegationMutation = useMutation({
+    mutationFn: ({ id, approve }: { id: string; approve: boolean }) =>
+      approve ? api.approveDelegation(token, id) : api.rejectDelegation(token, id),
+    onSuccess: (_data, { approve }) => {
+      invalidateDelegations();
+      // A newly approved consent can change which test results this account may access.
+      if (approve) queryClient.invalidateQueries({ queryKey: queryKeys.testResults(userId) });
+    },
+  });
+
+  async function runWithUnauthorizedCheck(action: () => Promise<unknown>): Promise<void> {
     try {
-      await api.cancel(session.accessToken, id);
-      await loadConsultations();
+      await action();
     } catch (nextError) {
-      if (nextError instanceof ApiError && nextError.status === 401) handleUnauthorized();
-      throw nextError;
-    }
-  }
-
-  async function requestDelegation(testResultId: string, delegateEmail: string) {
-    try {
-      await api.requestDelegation(session.accessToken, testResultId, delegateEmail);
-      await loadDelegations();
-    } catch (nextError) {
-      if (nextError instanceof ApiError && nextError.status === 401) handleUnauthorized();
-      throw nextError;
-    }
-  }
-
-  async function decideDelegation(id: string, approve: boolean) {
-    try {
-      if (approve) await api.approveDelegation(session.accessToken, id);
-      else await api.rejectDelegation(session.accessToken, id);
-      await loadDelegations();
-    } catch (nextError) {
-      if (nextError instanceof ApiError && nextError.status === 401) handleUnauthorized();
+      if (isUnauthorized(nextError)) handleUnauthorized();
       throw nextError;
     }
   }
@@ -1000,22 +999,28 @@ function CustomerPortal({ session, onLogout }: { session: Session; onLogout: () 
           </div>
         ) : view === 'book' ? (
           <BookingView
-            token={session.accessToken}
+            token={token}
+            userId={userId}
             results={results}
             consultations={consultations}
-            onReserved={loadConsultations}
             onUnauthorized={handleUnauthorized}
           />
         ) : view === 'consultations' ? (
-          <ConsultationsView consultations={consultations} loading={false} onCancel={cancelConsultation} />
+          <ConsultationsView
+            consultations={consultations}
+            loading={false}
+            onCancel={(id) => runWithUnauthorizedCheck(() => cancelMutation.mutateAsync(id))}
+          />
         ) : (
           <DelegationsView
             ownedResults={ownedResults}
             pending={delegations}
             loading={false}
-            onRequest={requestDelegation}
-            onApprove={(id) => decideDelegation(id, true)}
-            onReject={(id) => decideDelegation(id, false)}
+            onRequest={(testResultId, delegateEmail) =>
+              runWithUnauthorizedCheck(() => requestDelegationMutation.mutateAsync({ testResultId, delegateEmail }))
+            }
+            onApprove={(id) => runWithUnauthorizedCheck(() => decideDelegationMutation.mutateAsync({ id, approve: true }))}
+            onReject={(id) => runWithUnauthorizedCheck(() => decideDelegationMutation.mutateAsync({ id, approve: false }))}
           />
         )}
       </main>
@@ -1029,13 +1034,17 @@ function CustomerPortal({ session, onLogout }: { session: Session; onLogout: () 
 }
 
 function App() {
+  const queryClient = useQueryClient();
   const [session, setSession] = useState<Session | null>(() => readSession());
 
   function login(next: Session) {
+    // Drop anything cached for a previous account before the new portal mounts.
+    queryClient.clear();
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(next));
     setSession(next);
   }
   function logout() {
+    queryClient.clear();
     sessionStorage.removeItem(SESSION_KEY);
     setSession(null);
   }
