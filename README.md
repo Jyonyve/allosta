@@ -415,9 +415,11 @@ allosta/
 │  │  │  ├─ auth/
 │  │  │  ├─ availability/
 │  │  │  ├─ batch/
+│  │  │  ├─ common/
 │  │  │  ├─ consultations/
 │  │  │  ├─ dashboard/
 │  │  │  ├─ delegations/
+│  │  │  ├─ master-data/
 │  │  │  ├─ operator/
 │  │  │  └─ prisma/
 │  │  └─ test/
